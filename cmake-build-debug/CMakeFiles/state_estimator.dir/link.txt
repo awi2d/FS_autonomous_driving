@@ -1,0 +1,3 @@
+"C:\Program Files\JetBrains\CLion 2021.1\bin\cmake\win\bin\cmake.exe" -E rm -f CMakeFiles\state_estimator.dir/objects.a
+C:\PROGRA~1\MINGW-~1\X86_64~1.0-P\mingw64\bin\ar.exe qc CMakeFiles\state_estimator.dir/objects.a @CMakeFiles\state_estimator.dir\objects1.rsp
+C:\PROGRA~1\MINGW-~1\X86_64~1.0-P\mingw64\bin\G__~1.EXE -O3 -g -Wl,--whole-archive CMakeFiles\state_estimator.dir/objects.a -Wl,--no-whole-archive -o state_estimator.exe -Wl,--out-implib,libstate_estimator.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\state_estimator.dir\linklibs.rsp

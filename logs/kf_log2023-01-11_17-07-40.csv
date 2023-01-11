@@ -1,0 +1,2 @@
+logs from velocity_estimator.kf run at 2023-01-11 17:07:40, use_hold = True, use_noise = False, use_pred=True, use_gps=True, use_imu=True, use_rh=True, use_u=True, use_pseudo=True.
+time, gps_c, imu_c, rh_ch, u_chd, state_X, state_Y, state_Yaw, state_vx, state_vy, state_yawrate, state_ax, state_ay, state_srl, state_srr, true_X, true_Y, true_Yaw, true_vx, true_vy, true_yawrate, true_ax, true_ay, true_srl, true_srr, gps_pred_X, gps_pred_Y, gps_pred_Yaw, gps_pred_vx, gps_pred_yawrate, imu_pred_ax, imu_pred_ay, imu_pred_yawrate, 

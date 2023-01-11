@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="AutoImportSettings">
+    <option name="autoReloadType" value="SELECTIVE" />
+  </component>
+  <component name="CMakePresetLoader">{
+  &quot;useNewFormat&quot;: true
+}</component>
+  <component name="CMakeReloadState">
+    <option name="reloaded" value="true" />
+  </component>
+  <component name="CMakeRunConfigurationManager">
+    <generated>
+      <config projectName="state_estimator" targetName="state_estimator" />
+    </generated>
+  </component>
+  <component name="CMakeSettings" AUTO_RELOAD="true">
+    <configurations>
+      <configuration PROFILE_NAME="Debug" ENABLED="true" CONFIG_NAME="Debug" />
+    </configurations>
+  </component>
+  <component name="ChangeListManager">
+    <list default="true" id="1c8589ef-bcfa-40f5-a230-6b1725cc02b4" name="Default Changelist" comment="removed kf logs" />
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="ExecutionTargetManager" SELECTED_TARGET="CMakeBuildProfile:Debug" />
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="GitSEFilterConfiguration">
+    <file-type-list>
+      <filtered-out-file-type name="LOCAL_BRANCH" />
+      <filtered-out-file-type name="REMOTE_BRANCH" />
+      <filtered-out-file-type name="TAG" />
+      <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
+    </file-type-list>
+  </component>
+  <component name="MarkdownSettingsMigration">
+    <option name="stateVersion" value="1" />
+  </component>
+  <component name="ProjectId" id="2Fg7i0tNOzdrmxsmsy1b4MSF5Oc" />
+  <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "WebServerToolWindowFactoryState": "false",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "last_opened_file_path": "C:/Users/Idefix/CLionProjects/state_estimator",
+    "node.js.detected.package.eslint": "true",
+    "node.js.detected.package.tslint": "true",
+    "node.js.selected.package.eslint": "(autodetect)",
+    "node.js.selected.package.tslint": "(autodetect)",
+    "nodejs_package_manager_path": "npm",
+    "settings.editor.selected.configurable": "CPPToolchains"
+  }
+}]]></component>
+  <component name="RecentsManager">
+    <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\Idefix\CLionProjects\velocity_estimator\src" />
+    </key>
+  </component>
+  <component name="RunManager" selected="CMake Application.main">
+    <configuration default="true" type="CLionExternalRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true">
+      <method v="2">
+        <option name="CLION.EXTERNAL.BUILD" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="main" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="state_estimator" TARGET_NAME="state_estimator" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="state_estimator" RUN_TARGET_NAME="state_estimator">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="state_estimator" type="CMakeRunConfiguration" factoryName="Application" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" PASS_PARENT_ENVS_2="true" PROJECT_NAME="state_estimator" TARGET_NAME="state_estimator" CONFIG_NAME="Debug" RUN_TARGET_PROJECT_NAME="state_estimator" RUN_TARGET_NAME="state_estimator">
+      <method v="2">
+        <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
+      </method>
+    </configuration>
+    <list>
+      <item itemvalue="CMake Application.main" />
+      <item itemvalue="CMake Application.state_estimator" />
+    </list>
+  </component>
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="1c8589ef-bcfa-40f5-a230-6b1725cc02b4" name="Default Changelist" comment="" />
+      <created>1664901996840</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1664901996840</updated>
+      <workItem from="1664901998597" duration="6893000" />
+      <workItem from="1664961388575" duration="4313000" />
+      <workItem from="1664975027830" duration="8573000" />
+      <workItem from="1664988691272" duration="945000" />
+      <workItem from="1665697418059" duration="1252000" />
+      <workItem from="1665926272326" duration="17017000" />
+      <workItem from="1666004311912" duration="3916000" />
+      <workItem from="1666014799150" duration="9969000" />
+      <workItem from="1666033187165" duration="1839000" />
+      <workItem from="1666085427517" duration="13434000" />
+      <workItem from="1666129966100" duration="2902000" />
+      <workItem from="1666167825773" duration="19929000" />
+      <workItem from="1666196653598" duration="1885000" />
+      <workItem from="1666205165110" duration="598000" />
+      <workItem from="1666257308529" duration="14202000" />
+      <workItem from="1666299182549" duration="2674000" />
+      <workItem from="1666343535739" duration="14274000" />
+      <workItem from="1666429685147" duration="2388000" />
+      <workItem from="1666531416135" duration="12173000" />
+      <workItem from="1666617560413" duration="14753000" />
+      <workItem from="1666699312144" duration="8894000" />
+      <workItem from="1666779709155" duration="9887000" />
+      <workItem from="1666885114266" duration="2415000" />
+      <workItem from="1666905616067" duration="1657000" />
+      <workItem from="1667328859868" duration="1253000" />
+      <workItem from="1667394969842" duration="2363000" />
+      <workItem from="1667928500444" duration="7908000" />
+      <workItem from="1667995334974" duration="578000" />
+      <workItem from="1668330383675" duration="1448000" />
+      <workItem from="1668351933045" duration="10307000" />
+      <workItem from="1668422802886" duration="5529000" />
+      <workItem from="1668534880579" duration="617000" />
+      <workItem from="1668678449682" duration="1177000" />
+      <workItem from="1669026427114" duration="1710000" />
+      <workItem from="1670539119043" duration="231000" />
+      <workItem from="1670580647693" duration="594000" />
+      <workItem from="1670622665715" duration="953000" />
+      <workItem from="1670671042649" duration="13761000" />
+      <workItem from="1670708691212" duration="3109000" />
+      <workItem from="1670775313516" duration="2515000" />
+      <workItem from="1670777878467" duration="14620000" />
+      <workItem from="1670843507324" duration="7587000" />
+      <workItem from="1670877141014" duration="343000" />
+      <workItem from="1670877505432" duration="1513000" />
+      <workItem from="1670881634702" duration="1441000" />
+      <workItem from="1670930162133" duration="168000" />
+      <workItem from="1670930408765" duration="1127000" />
+      <workItem from="1670931792459" duration="1452000" />
+      <workItem from="1670936563523" duration="2459000" />
+      <workItem from="1670940231656" duration="3188000" />
+      <workItem from="1670945608772" duration="10369000" />
+      <workItem from="1670970754930" duration="1232000" />
+      <workItem from="1671033457078" duration="3021000" />
+      <workItem from="1671039496943" duration="7379000" />
+      <workItem from="1671101131619" duration="9442000" />
+      <workItem from="1673113629981" duration="1368000" />
+      <workItem from="1673364175377" duration="3710000" />
+      <workItem from="1673370586285" duration="4259000" />
+      <workItem from="1673453081536" duration="319000" />
+    </task>
+    <task id="LOCAL-00001" summary="add opencv.&#10;its working.">
+      <created>1670947700321</created>
+      <option name="number" value="00001" />
+      <option name="presentableId" value="LOCAL-00001" />
+      <option name="project" value="LOCAL" />
+      <updated>1670947700321</updated>
+    </task>
+    <task id="LOCAL-00002" summary="splitted VisualPipeline.cpp and StateEstimator.cpp in seperate files.">
+      <created>1673371884223</created>
+      <option name="number" value="00002" />
+      <option name="presentableId" value="LOCAL-00002" />
+      <option name="project" value="LOCAL" />
+      <updated>1673371884223</updated>
+    </task>
+    <task id="LOCAL-00003" summary="removed kf logs">
+      <created>1673372754222</created>
+      <option name="number" value="00003" />
+      <option name="presentableId" value="LOCAL-00003" />
+      <option name="project" value="LOCAL" />
+      <updated>1673372754223</updated>
+    </task>
+    <option name="localTasksCounter" value="4" />
+    <servers />
+  </component>
+  <component name="TypeScriptGeneratedFilesManager">
+    <option name="version" value="3" />
+  </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+  </component>
+  <component name="VcsManagerConfiguration">
+    <MESSAGE value="add opencv.&#10;its working." />
+    <MESSAGE value="splitted VisualPipeline.cpp and StateEstimator.cpp in seperate files." />
+    <MESSAGE value="removed kf logs" />
+    <option name="LAST_COMMIT_MESSAGE" value="removed kf logs" />
+  </component>
+</project>
