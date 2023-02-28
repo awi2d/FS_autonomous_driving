@@ -1,0 +1,7 @@
+#ifndef STATE_ESTIMATOR_SLAMG2O_H
+#define STATE_ESTIMATOR_SLAMG2O_H
+
+
+int main();
+
+#endif //STATE_ESTIMATOR_SLAMG2O_H

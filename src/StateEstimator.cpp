@@ -38,7 +38,7 @@ std::string string_format( const std::string& format, Args ... args )
 
 //start state_estimator
 
-StateEstimator::StateEstimator(bool use_hold, bool use_noise, bool usePred, bool useGps, bool useImu, bool useRh, bool useU, bool usePseudo) :
+StateEstimator::StateEstimator(bool usePred, bool useGps, bool useImu, bool useRh, bool useU, bool usePseudo) :
 state(Eigen::MatrixXd::Zero(10, 1)), p(Eigen::MatrixXd::Constant(10, 10, 1)), use_gps{useGps}, use_imu{useImu}, use_rh{useRh}, use_u{useU}, use_pseudo{usePseudo}, use_pred{usePred}{
     //state = Eigen::MatrixXd::Zero(10, 1);
     //p = Eigen::MatrixXd::Constant(10, 10, 1);
@@ -61,7 +61,7 @@ state(Eigen::MatrixXd::Zero(10, 1)), p(Eigen::MatrixXd::Constant(10, 10, 1)), us
         std::exit(1);
     }
 #ifdef debugMode
-    this->logfile << "logs from velocity_estimator.kf run at " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << string_format(", use_hold = %s, use_noise = %s, use_pred=%s, use_gps=%s, use_imu=%s, use_rh=%s, use_u=%s, use_pseudo=%s.", B2S(use_hold), B2S(use_noise), B2S(this->use_pred), B2S(this->use_gps), B2S(this->use_imu), B2S(this->use_rh), B2S(this->use_u), B2S(this->use_pseudo)) <<"\n";
+    this->logfile << "logs from velocity_estimator.kf run at " << std::put_time(&tm, "%Y-%m-%d %H:%M:%S") << string_format(", use_pred=%s, use_gps=%s, use_imu=%s, use_rh=%s, use_u=%s, use_pseudo=%s.", B2S(this->use_pred), B2S(this->use_gps), B2S(this->use_imu), B2S(this->use_rh), B2S(this->use_u), B2S(this->use_pseudo)) <<"\n";
     this->logfile << "time, gps_c, imu_c, rh_ch, u_chd, ";
     this->logfile << "state_X, state_Y, state_Yaw, state_vx, state_vy, state_yawrate, state_ax, state_ay, state_srl, state_srr, ";
     this->logfile << "true_X, true_Y, true_Yaw, true_vx, true_vy, true_yawrate, true_ax, true_ay, true_srl, true_srr, ";
@@ -77,10 +77,11 @@ state(Eigen::MatrixXd::Zero(10, 1)), p(Eigen::MatrixXd::Constant(10, 10, 1)), us
     // returns if the state is belivable
     bool StateEstimator::call(double currentTime, const Vector5d& gps, const Vector3d& imu, const Eigen::Vector2d& rh, const Eigen::Vector2d& u, const Vector10d& true_x){
         //std::chrono::system_clock::time_point currentTime = std::chrono::system_clock::now();
-        bool gps_changed = (int(currentTime*1000)%249==0) || this->gps_val.isApprox(gps, 0);
-        bool imu_changed = (int(currentTime*1000)%51==0) || this->imu_val.isApprox(imu, 0);
-        bool rh_changed = (int(currentTime*1000)%61==0) || this->rh_val.isApprox(rh, 0);
-        bool u_changed = (int(currentTime*1000)%33==0) || this->u_val.isApprox(u, 0);
+        // TODO 0 = no value
+        bool gps_changed = !gps.isZero(0);
+        bool imu_changed = !imu.isZero(0);
+        bool rh_changed = !rh.isZero(0);
+        bool u_changed = !u.isZero(0);
         if(gps_changed || imu_changed || rh_changed || u_changed){
             double dt = currentTime - this->time;
             this->time = currentTime;
@@ -173,6 +174,7 @@ state(Eigen::MatrixXd::Zero(10, 1)), p(Eigen::MatrixXd::Constant(10, 10, 1)), us
     }
 
     void StateEstimator::mesurment_gps(const Vector5d& gps_mes){
+        // TODO gps doesnt contain yawrate measurment
         //gps_mes = [lattitude, longitude, speed_over_ground, heading, yawrate]
         if(gps_startpos_notset){
             gps_startpos << gps_mes(0), gps_mes(1);
@@ -188,8 +190,8 @@ state(Eigen::MatrixXd::Zero(10, 1)), p(Eigen::MatrixXd::Constant(10, 10, 1)), us
         }
         //gps_tmp = [X, Y, Yaw, v, yawrate]
         this->gps_tmp <<
-                (gps_mes(0) - this->gps_startpos(0))*111195, // 111195 = erdumfang in meter/erdumfang in grad lattitude //https://stackoverflow.com/questions/639695/how-to-convert-latitude-or-longitude-to-meters
-                (gps_mes(1) - this->gps_startpos(1))*cos(gps_mes(0)*pi/180)*111195, // cos is per default in radiant, longitude/latitude in degree
+                (gps_mes(0) - this->gps_startpos(0))*111.32, // 6378.13567 = erdumfang in meter/erdumfang in grad radiants //https://stackoverflow.com/questions/639695/how-to-convert-latitude-or-longitude-to-meters
+                (gps_mes(1) - this->gps_startpos(1))*cos(this->state(sI::X))*111.32,  // maybe replace this->state(xI::X) with gps_mes(0) if they are always syncron
                 gps_mes(3), // heading
                 gps_mes(2), // speed over ground
                 gps_mes(4);// yawrate

@@ -1,5 +1,6 @@
 #ifndef VELOCITY_ESTIMATOR_VISUALPIPELINE_H
 #define VELOCITY_ESTIMATOR_VISUALPIPELINE_H
+#include <opencv2/dnn.hpp>
 #include <Eigen/Dense>
 
 class VisualPipeline {

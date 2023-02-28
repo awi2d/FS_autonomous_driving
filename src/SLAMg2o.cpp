@@ -1,65 +1,52 @@
-#define debugMode true
+// g2o - General Graph Optimization
+// Copyright (C) 2011 R. Kuemmerle, G. Grisetti, W. Burgard
+// All rights reserved.
+//
+// Redistribution and use in source and binary forms, with or without
+// modification, are permitted provided that the following conditions are
+// met:
+//
+// * Redistributions of source code must retain the above copyright notice,
+//   this list of conditions and the following disclaimer.
+// * Redistributions in binary form must reproduce the above copyright
+//   notice, this list of conditions and the following disclaimer in the
+//   documentation and/or other materials provided with the distribution.
+//
+// THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS
+// IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED
+// TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
+// PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT
+// HOLDER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL,
+// SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED
+// TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR
+// PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF
+// LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING
+// NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+// SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+
+#include <cmath>
 #include <iostream>
-#include <Eigen/Dense> //git clone https://gitlab.com/libeigen/eigen.git & set path in CMake to correct dir
 
-#include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
-#include <opencv2/imgcodecs.hpp>
-#include <opencv2/stitching.hpp>
-#if debugMode
-#include <chrono>  //mesuring time
-#include <fstream>  // reading file
-#include <regex>  // reading file
-#include <vector>
-#include <string>
-#endif
-
-//test if finaly opencv is correctly installed, linked in CMakeList and PATH viariable contains Path to correct /bin Folder in oopencv without being over 1024 chars long
-bool my_show_img(const std::string& filepath){
-    cv::Mat image = cv::imread(filepath, 1);
-    if ( !image.data )
-    {
-        printf("No image data \n");
-        return false;
-    }
-    namedWindow("Display Image", cv::WINDOW_AUTOSIZE );
-    imshow("Display Image", image);
-    cv::waitKey(0);
-    return true;
-}
-
-// read csv file (copied from https://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c):
-std::vector<std::vector<double>> read_csv(std::istream& str)
-{
-    // return[rowindex][cellindex] = cellindex cell of row rowindex.
-    std::vector<std::vector<double>> result;
-    std::string line;
-    std::string cell;
-    while(std::getline(str,line)){
-        //printf("read_csv: line = %s\n", line.c_str());
-        std::vector<double> line_result;
-        std::stringstream lineStream(line);
-
-
-        while(std::getline(lineStream,cell, ','))
-        {
-            double tmp = ::atof(cell.c_str());
-            //printf("read_csv: cell = %s = %f\n", cell.c_str(), tmp);  // empty string gets translated to 0
-            line_result.push_back(tmp);
-        }
-        // This checks for a trailing comma with no data after it.
-        if (!lineStream && cell.empty())
-        {
-            // If there was a trailing comma then add an empty element.
-            line_result.emplace_back(0);
-        }
-        result.push_back(line_result);
-    }
-    return result;
-}
+#include "edge_se2.h"
+#include "edge_se2_pointxy.h"
+#include "g2o/core/block_solver.h"
+#include "g2o/core/factory.h"
+#include "g2o/core/optimization_algorithm_factory.h"
+#include "g2o/core/optimization_algorithm_gauss_newton.h"
+#include "g2o/core/sparse_optimizer.h"
+#include "g2o/solvers/eigen/linear_solver_eigen.h"
+#include "simulator.h"
+#include "types_tutorial_slam2d.h"
+#include "vertex_point_xy.h"
+#include "vertex_se2.h"
 
 #include <sys/stat.h>
 #include <algorithm>
+
+using namespace std;
+using namespace g2o;
+using namespace g2o::tutorial;
+
 
 typedef double heading;
 typedef double meter;
@@ -194,7 +181,7 @@ distheading customPnP(const cone_keypoints& keypoints, boundingbox bb){
     for(int i=0; i<6; i++){
         for(int j=i+1; j<7; j++){
             double pxdist = std::sqrt(std::pow((std::get<0>(keypoints[i])*imgsize_w*bb_sizew-std::get<0>(keypoints[j])*imgsize_w*bb_sizew), 2)
-                    + std::pow((std::get<1>(keypoints[i])*imgsize_h*bb_sizeh-std::get<1>(keypoints[j])*imgsize_h*bb_sizeh), 2));  // = dist between keypoints i and j in pixel space
+                                      + std::pow((std::get<1>(keypoints[i])*imgsize_h*bb_sizeh-std::get<1>(keypoints[j])*imgsize_h*bb_sizeh), 2));  // = dist between keypoints i and j in pixel space
             double mpropx = obj_Distm[i][j]/pxdist;
             tmp[tmpi] = mpropx;
             tmpi++;
@@ -221,7 +208,7 @@ pose get_at_time(std::vector<std::tuple<droneFrnr, pose>> data, double time){
         printf("warning: time %f is after time range of data (%i, %i)\n", time, std::get<0>(data[0]), std::get<0>(data[data.size()-1]));
         return std::get<1>(data[data.size()-1]);
     }
-    for(int i=1; i<data.size(); i++){
+    for(unsigned int i=1; i<data.size(); i++){
         if(std::get<0>(data[i]) > time){
             if(time == std::get<0>(data[i-1])){
                 return std::get<1>(data[i-1]);
@@ -242,92 +229,161 @@ pose get_at_time(std::vector<std::tuple<droneFrnr, pose>> data, double time){
 }
 
 int main() {
-    //std::get<i>(tupel) == i-th element of tupel
+    cerr << "Hallo Welt!" << endl;
+
+    // init optimizer
+    typedef BlockSolver<BlockSolverTraits<-1, -1> > SlamBlockSolver;
+    typedef LinearSolverEigen<SlamBlockSolver::PoseMatrixType> SlamLinearSolver;
+
+    // allocating the optimizer
+    SparseOptimizer optimizer;
+    auto linearSolver = g2o::make_unique<SlamLinearSolver>();
+    linearSolver->setBlockOrdering(false);
+    OptimizationAlgorithmGaussNewton* solver =
+            new OptimizationAlgorithmGaussNewton(
+                    g2o::make_unique<SlamBlockSolver>(std::move(linearSolver)));
+
+    optimizer.setAlgorithm(solver);
+
+    Eigen::Matrix3d covariance;
+    covariance.fill(0.);
+    covariance(0, 0) = 0.5*0.5;  // translational noise squared
+    covariance(1, 1) = 0.5*0.5;  // translational noise squared
+    covariance(2, 2) = 0.1*0.1;  // rotational noise squared
+    Eigen::Matrix3d gnss_information = covariance.inverse();
+
+    // iterate over sensordata
     std::vector<std::tuple<int, pose>> carposes = get_car_poses();
-    pose old_carpose = get_at_time(carposes, (1280/20.0+29.56)*25.0);
-    for(int camL3_frnr=1280; camL3_frnr<2643; camL3_frnr++){
+    //pose old_carpose = get_at_time(carposes, (1280/20.0+29.56)*25.0);
+    int vertex_id = 1;
+    int current_carpose_vertex_id = 1;
+
+    // add initial 0-pose
+    current_carpose_vertex_id = vertex_id;
+    // add new carpose vertice
+    VertexSE2* zero_vertex = new VertexSE2;
+    zero_vertex->setId(0);
+    SE2 zero_se2 = SE2(0, 0, 0);
+    zero_vertex->setEstimate(zero_se2);  // type(initguess) = g2o::SE2
+    optimizer.addVertex(zero_vertex);
+
+    for(unsigned int camL3_frnr=1280; camL3_frnr<2643; camL3_frnr++){
         std::vector<boundingbox> bbs = get_boundingbox("camL3", camL3_frnr);
         //camL3_frnr/20 = drone3_frnr/25-29.56 -> drone3_frnr = (camL3_frnr/20+29.56)*25
         pose carpose = get_at_time(carposes, (camL3_frnr/20.0+29.56)*25.0);
-        printf("carpose[%f] = (%f, %f, %f)\n", (camL3_frnr/20.0+29.56)*25.0, std::get<0>(carpose), std::get<1>(carpose), std::get<1>(carpose));
-        for(int bbi=0; bbi < bbs.size(); bbi++){
+        //printf("carpose[%f] = (%f, %f, %f)\n", (camL3_frnr/20.0+29.56)*25.0, std::get<0>(carpose), std::get<1>(carpose), std::get<1>(carpose));
+        for(unsigned int bbi=0; bbi < bbs.size(); bbi++){
             cone_keypoints kp = get_cone_keypoints("camL3", camL3_frnr, bbi);
             if(kp.size() == 7){
                 distheading vp_det = customPnP(kp, bbs[bbi]);
-                printf("vp_det[%i] = (%f, %f)\n", bbi, std::get<0>(vp_det), std::get<1>(vp_det));
+                //printf("vp_det[%i] = (%f, %f)\n", bbi, std::get<0>(vp_det), std::get<1>(vp_det));
             }
+            current_carpose_vertex_id = vertex_id;
+            // add new carpose vertice
+            VertexSE2* carpose_vertex = new VertexSE2;
+            carpose_vertex->setId(vertex_id);
+            SE2 carpose_se2 = SE2(std::get<0>(carpose), std::get<1>(carpose), std::get<1>(carpose));
+            carpose_vertex->setEstimate(carpose_se2);  // type(initguess) = g2o::SE2
+            optimizer.addVertex(carpose_vertex);
+
+            vertex_id++;
             // slam_frontend
 
-            // add vp constraints
-            // add odometry constraint
-            // add gnss constraint
+            // add new landmark vertices
 
+            // add vp constraints
+
+            // add odometry constraint
+
+            // add gnss constraint
+            EdgeSE2* gnss_constraing = new EdgeSE2;
+            gnss_constraing->vertices()[0] = optimizer.vertex(0);
+            gnss_constraing->vertices()[1] = optimizer.vertex(current_carpose_vertex_id);
+            gnss_constraing->setMeasurement(carpose_se2);  // prev.truePose.inverse() * p.truePose, truePose of type SE2
+            gnss_constraing->setInformation(gnss_information);
+            optimizer.addEdge(gnss_constraing);
 
         }
     }
 
-    return 0;
-    std::ifstream file("C:/Users/Idefix/PycharmProjects/tmpProject/merged_rundata_csv/alldata_2022_12_17-14_43_59_id3.csv");
-    std::vector<std::vector<double>> csv_content = read_csv(file);
+    /*********************************************************************************
+     * creating the optimization problem
+     ********************************************************************************/
 
-    printf("csv_content.size() = %zu\n", csv_content.size());
 
-    std::string frames_pathL = "C:/Users/Idefix/PycharmProjects/datasets/testrun_2022_12_17/cam_footage/left_cam_14_46_00";
-    std::string frames_pathR = "C:/Users/Idefix/PycharmProjects/datasets/testrun_2022_12_17/cam_footage/right_cam_14_46_00";
-    std::string jpg = ".jpg";
 
-    //StateEstimator* state_estimator = new StateEstimator(false, true, true, true, true, false);
-
-    std::string conedet_path = "C:/Users/Idefix/PycharmProjects/datasets/Flos_objectdetection/2022_04_08_best.onnx";
-    std::string keypointdet_path = "C:/Users/Idefix/PycharmProjects/tmpProject/keypoint_regression_best.onnx";
-
-    //VisualPipeline* visual_pipeline = new VisualPipeline(conedet_path, keypointdet_path);
-
-    //SLAMg2o* slam = new SLAMg2o();
-    return 0;
-    for(int i=2; i<csv_content.size(); i++){
-        std::vector<double> sensordata = csv_content[i];  // alwas has length 19
-        // sensordata =
-        // [0:time, 1:BMS_SOC_UsbFlRec, 2:Converter_L_N_actual_UsbFlRec, 3:Converter_R_N_actual_UsbFlRec,
-        // 4:Converter_L_RPM_Actual_Filtered_UsbFlRec, 5:Converter_R_RPM_Actual_Filtered_UsbFlRec, 6:Converter_L_Torque_Out_UsbFlRec, 7:Converter_R_Torque_Out_UsbFlRec,
-        // 8:ECU_ACC_X_UsbFlRec, 9:ECU_ACC_Y_UsbFlRec, 10:ECU_ACC_Z_UsbFlRec,
-        // 11:GNSS_heading_UsbFlRec, 12:GNSS_latitude_UsbFlRec, 13:GNSS_longitude_UsbFlRec, 14:GNSS_speed_over_ground_UsbFlRec,
-        // 15:SWS_angle_UsbFlRec, 16:cam_left, 17:cam_right, 18:cam_drone]
-        double t = sensordata[0];  // time of sensordatadict
-
-        /*
-        //visual pipeline
-        std::string img_pathL = frames_pathL+std::to_string(sensordata[16])+".jpg";  // path to frame of left cam
-        std::string img_pathR = frames_pathR+std::to_string(sensordata[17])+".jpg";  // path to frame of right cam
-        printf("img_path = %s\n", img_pathL.c_str());
-        Eigen::MatrixXd cone_pos = visual_pipeline->get_relative_cone_positions(img_pathL);
-        //Eigen::MatrixXd cone_pos = visual_pipeline->get_relative_cone_positions(img_pathR);
-        */
-
-        //state estimation.
-        /*
-        Vector5d gps;
-        gps << sensordata[12], sensordata[13], sensordata[14], sensordata[11], 0;  // TODO remove yawrate from gps
-        Vector3d imu;
-        imu << sensordata[8], sensordata[9], 0;  // TODO remove yawrate from gps
-        Eigen::Vector2d rh;  // [turning_speed_rear_left_wheel, turning_speed_rear_right_wheel]
-        rh << sensordata[4], sensordata[5];
-        Eigen::Vector2d u;  // [Trq_Drive, wheelangel]
-        u << sensordata[6], sensordata[15];  // TODO dont ignore right Torque
-        Vector10d true_x;
-        true_x << 0, 0, 0, 0, 0, 0, 0, 0, 0, 0;
-        state_estimator->call(t, gps, imu, rh, u, true_x);
-         */
-        //car_state = state_estimator.getstate();
-
-        //SLAM
-        //slam.?(car_state, cone_pos);  //filling out this \? is main part of this work.
-        //map = slam.get();
-
-        //controller
-        //controls = controler.get(car_state, map);
-
-        //send controls to other programm parts/can?
+    // adding the odometry to the optimizer
+    // first adding all the vertices
+    /*cerr << "Optimization: Adding robot poses ... ";
+    for (size_t i = 0; i < 10; ++i) {
+        VertexSE2* robot = new VertexSE2;
+        robot->setId(i);
+        robot->setEstimate(0);
+        optimizer.addVertex(robot);
     }
+    cerr << "done." << endl;
+     */
+
+    // second add the odometry constraints
+    /*cerr << "Optimization: Adding odometry measurements ... ";
+    for (size_t i = 0; i < 10; ++i) {
+
+        EdgeSE2* odometry = new EdgeSE2;
+        odometry->vertices()[0] = optimizer.vertex(i);
+        odometry->vertices()[1] = optimizer.vertex(i+1);
+        odometry->setMeasurement(simEdge.simulatorTransf);
+        odometry->setInformation(simEdge.information);
+        optimizer.addEdge(odometry);
+    }
+    cerr << "done." << endl;
+
+    // add the landmark observations
+    cerr << "Optimization: add landmark vertices ... ";
+    for (size_t i = 0; i < simulator.landmarks().size(); ++i) {
+        const Simulator::Landmark& l = simulator.landmarks()[i];
+        VertexPointXY* landmark = new VertexPointXY;
+        landmark->setId(l.id);
+        landmark->setEstimate(l.simulatedPose);
+        optimizer.addVertex(landmark);
+    }
+    cerr << "done." << endl;
+
+    cerr << "Optimization: add landmark observations ... ";
+    for (size_t i = 0; i < simulator.landmarkObservations().size(); ++i) {
+        const Simulator::LandmarkEdge& simEdge =
+                simulator.landmarkObservations()[i];
+        EdgeSE2PointXY* landmarkObservation = new EdgeSE2PointXY;
+        landmarkObservation->vertices()[0] = optimizer.vertex(simEdge.from);
+        landmarkObservation->vertices()[1] = optimizer.vertex(simEdge.to);
+        landmarkObservation->setMeasurement(simEdge.simulatorMeas);
+        landmarkObservation->setInformation(simEdge.information);
+        landmarkObservation->setParameterId(0, sensorOffset->id());
+        optimizer.addEdge(landmarkObservation);
+    }
+    cerr << "done." << endl;
+*/
+    /*********************************************************************************
+     * optimization
+     ********************************************************************************/
+
+    // dump initial state to the disk
+    optimizer.save("tutorial_before.g2o");
+
+    // prepare and run the optimization
+    // fix the first robot pose to account for gauge freedom
+    VertexSE2* firstRobotPose = dynamic_cast<VertexSE2*>(optimizer.vertex(0));
+    firstRobotPose->setFixed(true);
+    optimizer.setVerbose(true);
+
+    cerr << "Optimizing" << endl;
+    optimizer.initializeOptimization();
+    optimizer.optimize(10);
+    cerr << "done." << endl;
+
+    optimizer.save("tutorial_after.g2o");
+
+    // freeing the graph memory
+    optimizer.clear();
+
     return 0;
 }

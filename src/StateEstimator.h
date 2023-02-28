@@ -90,7 +90,7 @@ private:
 
     std::ofstream logfile;  //#ifdef debugMode
 public:
-    StateEstimator(bool use_hold, bool use_noise, bool usePred, bool useGps, bool useImu, bool useRh, bool useU, bool usePseudo);
+    StateEstimator(bool usePred, bool useGps, bool useImu, bool useRh, bool useU, bool usePseudo);
     bool call(double currentTime, const Vector5d& gps, const Vector3d& imu, const Eigen::Vector2d& rh, const Eigen::Vector2d& u, const Vector10d& true_x);
     void doSystemPrediction(double dt);
     void mesurment_pseudo();
