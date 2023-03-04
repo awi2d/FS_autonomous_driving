@@ -127,30 +127,29 @@ std::vector<boundingbox> get_boundingbox(const std::string& cam, int framenr)
     }
     return result;  // empty if file doesnt exist
 }
-
+std::map<std::tuple<int, int>, std::vector<pxpos>> keypoints_cache;
 std::vector<pxpos> get_cone_keypoints(const std::string& cam, int framenr, int cone){
-    // works.
     // should have the same behavior as
     // def get_cone_keypoints(cam, framenr, cone) -> [(normalised_px_w, normalised_px_h)]:
-    std::string filename = "C:/Users/Idefix/PycharmProjects/tmpProject/vp_labels/cone_annotations.csv";  // hardcoeded filenames in the sourcecode are a good idea, right?
-    if(file_exists(filename)){
-        std::string conename = "/cones/"+cam+"_frame_"+std::to_string(framenr)+".jpg_cone_"+std::to_string(cone)+".jpg";
-        std::ifstream file(filename);
-        std::string line;
-        std::string cell;
-        while(std::getline(file,line)){
-            // line = "/cones/camL3_frame_1297.jpg_cone_17.jpg,0.7255555555555555#0.16666666666666666,0.6055555555555555#0.3466666666666667,0.51#0.5488888888888889,0.39111111111111113#0.7433333333333333,0.7822222222222223#0.36777777777777776,0.7911111111111111#0.6077777777777778,0.7811111111111111#0.7711111111111111"
-            std::vector<std::string> line_split = split(line, ',');
-            if(line_split[0]==conename){
+    if(keypoints_cache.empty()){
+        std::string filename = "C:/Users/Idefix/PycharmProjects/tmpProject/vp_labels/cone_annotations.csv";  // hardcoeded filenames in the sourcecode are a good idea, right?
+        if(file_exists(filename)){
+            std::ifstream file(filename);
+            std::string line;
+            std::string cell;
+            while(std::getline(file,line)){
+                // line = "/cones/camL3_frame_1297.jpg_cone_17.jpg,0.7255555555555555#0.16666666666666666,0.6055555555555555#0.3466666666666667,0.51#0.5488888888888889,0.39111111111111113#0.7433333333333333,0.7822222222222223#0.36777777777777776,0.7911111111111111#0.6077777777777778,0.7811111111111111#0.7711111111111111"
+                std::vector<std::string> line_split = split(line, ',');
                 std::vector<pxpos> res {str2pxpos(line_split[1]), str2pxpos(line_split[2]), str2pxpos(line_split[3]), str2pxpos(line_split[4]), str2pxpos(line_split[5]), str2pxpos(line_split[6]), str2pxpos(line_split[7])};
-                return res;
+                std::tuple<int, int> key = {framenr, cone};
+                keypoints_cache[key] = res;
             }
-        };
-    }else{
-        printf("ERROR: file doesnt exists, change path in get_cone_keypoints to correct location of cone_annotations.csv\n");
+        }else{
+            printf("ERROR: file doesnt exists, change path in get_cone_keypoints to correct location of cone_annotations.csv\n");
+        }
     }
-    std::vector<pxpos> res;
-    return res;  // empty if file doesnt exist
+    std::tuple<int, int> key = {framenr, cone};
+    return keypoints_cache[key];  // empty if file doesnt exist
 }
 
 

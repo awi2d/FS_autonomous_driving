@@ -51,12 +51,15 @@ using namespace g2o::tutorial;
 typedef double heading;
 typedef double meter;
 typedef double second;
+typedef double radiants;
 typedef int droneFrnr;
 typedef std::tuple<double, double> pxpos;
 typedef std::tuple<int, double, double, double, double> boundingbox;  // (cls, posw, posh, sizew, sizeh)
 typedef std::tuple<meter, heading> distheading;
 typedef std::vector<pxpos> cone_keypoints; // always has length 7.
 typedef std::tuple<meter, meter, heading> pose;
+typedef Eigen::Vector2d m_position;  // (meter_north, meter_east)
+
 //copied from https://stackoverflow.com/questions/12774207/fastest-way-to-check-if-a-file-exists-using-standard-c-c11-14-17-c
 inline bool file_exists(const std::string& name) {
     struct stat buffer{};
@@ -94,7 +97,7 @@ pxpos str2pxpos(const std::string& s){
 }
 
 // read file (copied from https://stackoverflow.com/questions/1120140/how-can-i-read-and-parse-csv-files-in-c):
-std::vector<boundingbox> get_boundingbox(const std::string& cam, int framenr)
+std::vector<boundingbox> get_boundingbox(const std::string& cam, unsigned int framenr)
 {
     // should have the same behavior as
     // def get_boundingboxes(cam: str, framenr: int) -> [cone_bounding_box]:
@@ -115,29 +118,36 @@ std::vector<boundingbox> get_boundingbox(const std::string& cam, int framenr)
     return result;  // empty if file doesnt exist
 }
 
-std::vector<pxpos> get_cone_keypoints(const std::string& cam, int framenr, int cone){
-    // works.
+std::map<std::tuple<unsigned int, unsigned int>, std::vector<pxpos>> keypoints_cache;
+std::vector<pxpos> get_cone_keypoints(const std::string& cam, unsigned int framenr, unsigned int cone){
     // should have the same behavior as
     // def get_cone_keypoints(cam, framenr, cone) -> [(normalised_px_w, normalised_px_h)]:
-    std::string filename = "C:/Users/Idefix/PycharmProjects/tmpProject/vp_labels/cone_annotations.csv";  // hardcoeded filenames in the sourcecode are a good idea, right?
-    if(file_exists(filename)){
-        std::string conename = "/cones/"+cam+"_frame_"+std::to_string(framenr)+".jpg_cone_"+std::to_string(cone)+".jpg";
-        std::ifstream file(filename);
-        std::string line;
-        std::string cell;
-        while(std::getline(file,line)){
-            // line = "/cones/camL3_frame_1297.jpg_cone_17.jpg,0.7255555555555555#0.16666666666666666,0.6055555555555555#0.3466666666666667,0.51#0.5488888888888889,0.39111111111111113#0.7433333333333333,0.7822222222222223#0.36777777777777776,0.7911111111111111#0.6077777777777778,0.7811111111111111#0.7711111111111111"
-            std::vector<std::string> line_split = split(line, ',');
-            if(line_split[0]==conename){
-                std::vector<pxpos> res {str2pxpos(line_split[1]), str2pxpos(line_split[2]), str2pxpos(line_split[3]), str2pxpos(line_split[4]), str2pxpos(line_split[5]), str2pxpos(line_split[6]), str2pxpos(line_split[7])};
-                return res;
+    if(keypoints_cache.empty()){
+        std::string filename = "C:/Users/Idefix/PycharmProjects/tmpProject/vp_labels/cone_annotations.csv";  // hardcoeded filenames in the sourcecode are a good idea, right?
+        if(file_exists(filename)){
+            std::ifstream file(filename);
+            std::string line;
+            std::string cell;
+            while(std::getline(file,line)){
+                // line = "/cones/camL3_frame_1297.jpg_cone_17.jpg,0.7255555555555555#0.16666666666666666,0.6055555555555555#0.3466666666666667,0.51#0.5488888888888889,0.39111111111111113#0.7433333333333333,0.7822222222222223#0.36777777777777776,0.7911111111111111#0.6077777777777778,0.7811111111111111#0.7711111111111111"
+                std::vector<std::string> line_split = split(line, ',');
+                std::vector<std::string> name_split = split(line_split[0], '_');
+                // /cones/cone_19028.jpg
+                if(name_split.size() == 5){
+                    std::string t_cam = name_split[0];
+                    int t_frnr = str2int(name_split[2].substr(0, name_split[2].size()-4));  // remove .jpg
+                    int t_cone = str2int(name_split[4].substr(0, name_split[4].size()-4));
+                    std::vector<pxpos> res {str2pxpos(line_split[1]), str2pxpos(line_split[2]), str2pxpos(line_split[3]), str2pxpos(line_split[4]), str2pxpos(line_split[5]), str2pxpos(line_split[6]), str2pxpos(line_split[7])};
+                    std::tuple<int, int> key = {t_frnr, t_cone};
+                    keypoints_cache[key] = res;
+                }
             }
-        };
-    }else{
-        printf("ERROR: file doesnt exists, change path in get_cone_keypoints to correct location of cone_annotations.csv\n");
+        }else{
+            printf("ERROR: file doesnt exists, change path in get_cone_keypoints to correct location of cone_annotations.csv\n");
+        }
     }
-    std::vector<pxpos> res;
-    return res;  // empty if file doesnt exist
+    std::tuple<unsigned int, unsigned int> key = {framenr, cone};
+    return keypoints_cache[key];  // empty if file doesnt exist
 }
 
 
@@ -153,7 +163,7 @@ std::vector<std::tuple<int, pose>> get_car_poses(){
     std::string cell;
     std::vector<std::tuple<int, pose>> res;
     while(std::getline(file,line)){
-        // line = "/cones/camL3_frame_1297.jpg_cone_17.jpg,0.7255555555555555#0.16666666666666666,0.6055555555555555#0.3466666666666667,0.51#0.5488888888888889,0.39111111111111113#0.7433333333333333,0.7822222222222223#0.36777777777777776,0.7911111111111111#0.6077777777777778,0.7811111111111111#0.7711111111111111"
+
         std::vector<std::string> line_split = split(line, ',');
         pose carpose = {str2double(line_split[1]), str2double(line_split[2]), str2double(line_split[3])};// pos_north, pos_east, heading
         std::tuple<int, pose> tmp = {str2int(line_split[0]), carpose};
@@ -199,6 +209,12 @@ distheading customPnP(const cone_keypoints& keypoints, boundingbox bb){
     return res;
 }
 
+m_position distazimuth_to_meter(meter dist, radiants heading){
+    m_position res;
+    res << cos(heading)*dist, sin(heading)*dist;
+    return res;
+}
+
 pose get_at_time(std::vector<std::tuple<droneFrnr, pose>> data, double time){
     if(time <= std::get<0>(data[0])){
         printf("warning: time %f is before time range of data (%i, %i)\n", time, std::get<0>(data[0]), std::get<0>(data[data.size()-1]));
@@ -219,7 +235,7 @@ pose get_at_time(std::vector<std::tuple<droneFrnr, pose>> data, double time){
             pose v0 = std::get<1>(data[i]);
             pose v1 = std::get<1>(data[i-1]);
             //(w1*y[i-1]+w0*y[i])/sum
-            pose res = {(std::get<0>(v0)*w0+std::get<0>(v1)*w1)/sum, (std::get<1>(v0)*w0+std::get<1>(v1)*w1)/sum, (std::get<1>(v0)*w0+std::get<1>(v1)*w1)/sum};
+            pose res = {(std::get<0>(v0)*w0+std::get<0>(v1)*w1)/sum, (std::get<1>(v0)*w0+std::get<1>(v1)*w1)/sum, (std::get<2>(v0)*w0+std::get<2>(v1)*w1)/sum};
             return res;
 
         }
@@ -230,34 +246,47 @@ pose get_at_time(std::vector<std::tuple<droneFrnr, pose>> data, double time){
 
 int main() {
     cerr << "Hallo Welt!" << endl;
+    /*********************************************************************************
+     * init
+     ********************************************************************************/
 
     // init optimizer
     typedef BlockSolver<BlockSolverTraits<-1, -1> > SlamBlockSolver;
     typedef LinearSolverEigen<SlamBlockSolver::PoseMatrixType> SlamLinearSolver;
 
     // allocating the optimizer
-    SparseOptimizer optimizer;
     auto linearSolver = g2o::make_unique<SlamLinearSolver>();
     linearSolver->setBlockOrdering(false);
-    OptimizationAlgorithmGaussNewton* solver =
-            new OptimizationAlgorithmGaussNewton(
-                    g2o::make_unique<SlamBlockSolver>(std::move(linearSolver)));
+    OptimizationAlgorithmGaussNewton* solver = new OptimizationAlgorithmGaussNewton(g2o::make_unique<SlamBlockSolver>(std::move(linearSolver)));
 
+    SparseOptimizer optimizer;
     optimizer.setAlgorithm(solver);
+    ParameterSE2Offset* sensorOffset = new ParameterSE2Offset;
+    sensorOffset->setOffset();
+    sensorOffset->setId(0);
+    optimizer.addParameter(sensorOffset);
 
+    //double gnss_meter_error = 0.632 meter;
+    //double gnss_heading_error = 0.0156 radiants;
+    //double vp_dist_error = 0.1*dist meter; -> information(0, 0) = 1/(0.1*dist*0.1*dist) = 100/dist
     Eigen::Matrix3d covariance;
     covariance.fill(0.);
-    covariance(0, 0) = 0.5*0.5;  // translational noise squared
-    covariance(1, 1) = 0.5*0.5;  // translational noise squared
-    covariance(2, 2) = 0.1*0.1;  // rotational noise squared
+    covariance(0, 0) = 0.632*0.632;  // translational noise squared
+    covariance(1, 1) = 0.632*0.632;  // translational noise squared
+    covariance(2, 2) = 0.0156*0.0156;  // rotational noise squared
     Eigen::Matrix3d gnss_information = covariance.inverse();
 
     // iterate over sensordata
     std::vector<std::tuple<int, pose>> carposes = get_car_poses();
     //pose old_carpose = get_at_time(carposes, (1280/20.0+29.56)*25.0);
+    // init variables for for(camL3_frnr)
     int vertex_id = 1;
     int current_carpose_vertex_id = 1;
-
+    int last_carpose_vertex_id = 0;
+    SE2 carpose_se2 = SE2(0, 0, 0);
+    SE2 last_carpose_se2 = SE2(0, 0, 0);
+    std::vector<std::tuple<Eigen::Vector2d, m_position>> vp_det;  // std::get<0>(vp_det[i]) = dist, heading, std::get<1>(gp_det[i]) = abs mpos of cone
+    std::vector<int> conevertex_ids;
     // add initial 0-pose
     current_carpose_vertex_id = vertex_id;
     // add new carpose vertice
@@ -267,101 +296,110 @@ int main() {
     zero_vertex->setEstimate(zero_se2);  // type(initguess) = g2o::SE2
     optimizer.addVertex(zero_vertex);
 
-    for(unsigned int camL3_frnr=1280; camL3_frnr<2643; camL3_frnr++){
-        std::vector<boundingbox> bbs = get_boundingbox("camL3", camL3_frnr);
-        //camL3_frnr/20 = drone3_frnr/25-29.56 -> drone3_frnr = (camL3_frnr/20+29.56)*25
-        pose carpose = get_at_time(carposes, (camL3_frnr/20.0+29.56)*25.0);
-        //printf("carpose[%f] = (%f, %f, %f)\n", (camL3_frnr/20.0+29.56)*25.0, std::get<0>(carpose), std::get<1>(carpose), std::get<1>(carpose));
-        for(unsigned int bbi=0; bbi < bbs.size(); bbi++){
-            cone_keypoints kp = get_cone_keypoints("camL3", camL3_frnr, bbi);
-            if(kp.size() == 7){
-                distheading vp_det = customPnP(kp, bbs[bbi]);
-                //printf("vp_det[%i] = (%f, %f)\n", bbi, std::get<0>(vp_det), std::get<1>(vp_det));
-            }
-            current_carpose_vertex_id = vertex_id;
-            // add new carpose vertice
-            VertexSE2* carpose_vertex = new VertexSE2;
-            carpose_vertex->setId(vertex_id);
-            SE2 carpose_se2 = SE2(std::get<0>(carpose), std::get<1>(carpose), std::get<1>(carpose));
-            carpose_vertex->setEstimate(carpose_se2);  // type(initguess) = g2o::SE2
-            optimizer.addVertex(carpose_vertex);
-
-            vertex_id++;
-            // slam_frontend
-
-            // add new landmark vertices
-
-            // add vp constraints
-
-            // add odometry constraint
-
-            // add gnss constraint
-            EdgeSE2* gnss_constraing = new EdgeSE2;
-            gnss_constraing->vertices()[0] = optimizer.vertex(0);
-            gnss_constraing->vertices()[1] = optimizer.vertex(current_carpose_vertex_id);
-            gnss_constraing->setMeasurement(carpose_se2);  // prev.truePose.inverse() * p.truePose, truePose of type SE2
-            gnss_constraing->setInformation(gnss_information);
-            optimizer.addEdge(gnss_constraing);
-
-        }
-    }
-
     /*********************************************************************************
      * creating the optimization problem
      ********************************************************************************/
 
+    for(unsigned int camL3_frnr=1280; camL3_frnr<2643; camL3_frnr++){
+        //printf("\nfrnr=%i\n", camL3_frnr);
+        std::vector<boundingbox> bbs = get_boundingbox("camL3", camL3_frnr);
+        //camL3_frnr/20 = drone3_frnr/25-29.56 -> drone3_frnr = (camL3_frnr/20+29.56)*25
+        pose carpose = get_at_time(carposes, (camL3_frnr/20.0+29.56)*25.0);
+        vp_det.clear();
+        for(unsigned int bbi=0; bbi < bbs.size(); bbi++){
+            cone_keypoints kp = get_cone_keypoints("camL3", camL3_frnr, bbi);
+            if(kp.size() == 7){
+                distheading tmp = customPnP(kp, bbs[bbi]);
+                if(std::get<0>(tmp) < 10){
+                    Eigen::Vector2d disthead;
+                    disthead << std::get<0>(tmp), std::get<1>(tmp);
+                    m_position relpos = distazimuth_to_meter(std::get<0>(tmp), std::get<1>(tmp)+std::get<2>(carpose));
+                    m_position abspos;
+                    abspos << relpos(0)+std::get<0>(carpose), relpos(1)+std::get<1>(carpose);
+                    //printf("camL3_frnr=%i, bbi=%i, relpos=(%f, %f), abspos=(%f, %f)\n", camL3_frnr, bbi, relpos(0), relpos(1), abspos(0), abspos(1));
+                    //relpos and abspos are correct
+                    vp_det.emplace_back(disthead, abspos);
+                }//ignore cone detections 10 or more meter away
+                //printf("vp_det[%i] = (%f, %f)\n", bbi, std::get<0>(vp_det), std::get<1>(vp_det));
+            }
 
+        }//for(bb)
 
-    // adding the odometry to the optimizer
-    // first adding all the vertices
-    /*cerr << "Optimization: Adding robot poses ... ";
-    for (size_t i = 0; i < 10; ++i) {
-        VertexSE2* robot = new VertexSE2;
-        robot->setId(i);
-        robot->setEstimate(0);
-        optimizer.addVertex(robot);
-    }
-    cerr << "done." << endl;
-     */
+        // add new carpose vertice
+        VertexSE2* carpose_vertex = new VertexSE2;
+        carpose_vertex->setId(vertex_id);
+        current_carpose_vertex_id = vertex_id;
+        SE2 carpose_se2 = SE2(std::get<0>(carpose), std::get<1>(carpose), std::get<2>(carpose));
+        //TODO set velocity and heading diff as  odometry measurement.
+        carpose_vertex->setEstimate(carpose_se2);
+        optimizer.addVertex(carpose_vertex);
+        vertex_id++;
 
-    // second add the odometry constraints
-    /*cerr << "Optimization: Adding odometry measurements ... ";
-    for (size_t i = 0; i < 10; ++i) {
+        // add odometry constraint
+        EdgeSE2* odometry_constraing = new EdgeSE2;
+        odometry_constraing->vertices()[0] = optimizer.vertex(last_carpose_vertex_id);
+        odometry_constraing->vertices()[1] = optimizer.vertex(current_carpose_vertex_id);
+        //void EdgeSE2::computeError() {_error = (_inverseMeasurement * (v1->estimate().inverse() * v2->estimate())).toVector;}
+        odometry_constraing->setMeasurement(last_carpose_se2.inverse()*carpose_se2);  // measurement ?= SE2(meterdist in direction of travel, meterdist perpendicular to travel, change in angle, gl.36
+        odometry_constraing->setInformation(gnss_information);
+        optimizer.addEdge(odometry_constraing);
 
-        EdgeSE2* odometry = new EdgeSE2;
-        odometry->vertices()[0] = optimizer.vertex(i);
-        odometry->vertices()[1] = optimizer.vertex(i+1);
-        odometry->setMeasurement(simEdge.simulatorTransf);
-        odometry->setInformation(simEdge.information);
-        optimizer.addEdge(odometry);
-    }
-    cerr << "done." << endl;
+        // add gnss constraint
+        EdgeSE2* gnss_constraing = new EdgeSE2;
+        gnss_constraing->vertices()[0] = optimizer.vertex(0);
+        gnss_constraing->vertices()[1] = optimizer.vertex(current_carpose_vertex_id);
+        gnss_constraing->setMeasurement(carpose_se2);  // prev.truePose.inverse() * p.truePose, truePose of type SE2
+        gnss_constraing->setInformation(gnss_information);
+        optimizer.addEdge(gnss_constraing);
 
-    // add the landmark observations
-    cerr << "Optimization: add landmark vertices ... ";
-    for (size_t i = 0; i < simulator.landmarks().size(); ++i) {
-        const Simulator::Landmark& l = simulator.landmarks()[i];
-        VertexPointXY* landmark = new VertexPointXY;
-        landmark->setId(l.id);
-        landmark->setEstimate(l.simulatedPose);
-        optimizer.addVertex(landmark);
-    }
-    cerr << "done." << endl;
+        // slam_frontend
+        for(int i=0; i<vp_det.size(); i++){
+            Eigen::Vector2d dist_heading = std::get<0>(vp_det[i]);
+            m_position abs_conepos = std::get<1>(vp_det[i]);
+            int detected_landmark_id = -1;
 
-    cerr << "Optimization: add landmark observations ... ";
-    for (size_t i = 0; i < simulator.landmarkObservations().size(); ++i) {
-        const Simulator::LandmarkEdge& simEdge =
-                simulator.landmarkObservations()[i];
-        EdgeSE2PointXY* landmarkObservation = new EdgeSE2PointXY;
-        landmarkObservation->vertices()[0] = optimizer.vertex(simEdge.from);
-        landmarkObservation->vertices()[1] = optimizer.vertex(simEdge.to);
-        landmarkObservation->setMeasurement(simEdge.simulatorMeas);
-        landmarkObservation->setInformation(simEdge.information);
-        landmarkObservation->setParameterId(0, sensorOffset->id());
-        optimizer.addEdge(landmarkObservation);
-    }
-    cerr << "done." << endl;
-*/
+            // type(last_vp_absmpos) == std::vector<std::tuple<int, meter, meter>>
+            for(int conevertex_id : conevertex_ids){
+                VertexPointXY* maped_cone = dynamic_cast<VertexPointXY*>(optimizer.vertex(conevertex_id));
+                auto maped_cone_pos = maped_cone->estimate();
+                //if(dist(abs_conepos, last_vp_absmpos[ii]) < 1){
+                if(std::sqrt(std::pow(abs_conepos[0]-maped_cone_pos[0], 2) + std::pow(abs_conepos[1]-maped_cone_pos[1], 2))<1){
+                    detected_landmark_id = conevertex_id;
+                    break;
+                }
+            }
+            if(detected_landmark_id==-1){
+                // add new landmark vertices
+                VertexPointXY* landmark = new VertexPointXY;
+                landmark->setId(vertex_id);
+                detected_landmark_id = vertex_id;
+                conevertex_ids.emplace_back(detected_landmark_id);
+                landmark->setEstimate(abs_conepos);
+                optimizer.addVertex(landmark);
+                vertex_id++;
+            }
+
+            // add vp constraints
+            Eigen::Matrix2d vp_information;
+            //vp_information << 100/(0.1+dist_heading(0)), 0, 0, 100/(0.1+dist_heading(0)); // add 0.1 to dist to avoid div by 0. //TODO Cholesky failure, writing debug.txt (Hessian loadable by Octave)
+            vp_information << 1, 0, 0, 1;
+            EdgeSE2PointXY* vpobs_constraint = new EdgeSE2PointXY;
+            vpobs_constraint->vertices()[0] = optimizer.vertex(current_carpose_vertex_id);
+            vpobs_constraint->vertices()[1] = optimizer.vertex(detected_landmark_id);
+            // error = ( v1−>estimate().inverse() * l2−>estimate()) − measurement;
+            //conepos_estimate = carpose->estimate() * _measurement
+            m_position rel_mpos_unrotated = distazimuth_to_meter(dist_heading(0), dist_heading(1));  // meter position of landmark, in carpose reference frame
+            //assert rel_mpos_unrotated == carpose_se2.inverse() * abs_conepos;
+            vpobs_constraint->setMeasurement(rel_mpos_unrotated);
+            vpobs_constraint->setInformation(vp_information);
+            vpobs_constraint->setParameterId(0, sensorOffset->id());  //https://github.com/RainerKuemmerle/g2o/issues/379
+            optimizer.addEdge(vpobs_constraint);
+        }//end SLAM front-end
+
+        last_carpose_vertex_id = current_carpose_vertex_id;
+        last_carpose_se2 = carpose_se2;
+    }//for(camL3_frnr)
+
     /*********************************************************************************
      * optimization
      ********************************************************************************/
@@ -374,6 +412,14 @@ int main() {
     VertexSE2* firstRobotPose = dynamic_cast<VertexSE2*>(optimizer.vertex(0));
     firstRobotPose->setFixed(true);
     optimizer.setVerbose(true);
+
+    bool has_gauge_freedom = optimizer.gaugeFreedom();
+    if (has_gauge_freedom) {
+        printf("has gauge freedom");
+        auto* gauge_node = optimizer.findGauge();
+        printf("gauge_node.id = %i\n", gauge_node->id());
+        gauge_node->setFixed(true);
+    }
 
     cerr << "Optimizing" << endl;
     optimizer.initializeOptimization();
