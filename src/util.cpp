@@ -182,8 +182,11 @@ std::vector<std::tuple<int, pose_ext>> get_car_poses(std::string filename){
     return res;
 }
 int ssdt2camL(double ssdt){
-    int r = (int) (ssdt*20-1079);
-    return r;
+    // camL3_frnr/20 = drone3_frnr/25-29.56
+    // ssdt = drone_frnr/25 + 26.4
+    // camL3_frnr/20 = ssdt-55.959
+    int camL3_frnr = (int) (ssdt*20-1119.2);
+    return camL3_frnr;
 }
 
 
