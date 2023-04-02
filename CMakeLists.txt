@@ -21,39 +21,35 @@ find_package(Eigen3 CONFIG REQUIRED)
 message(STATUS "Eigen3 FOUND: ${Eigen3_FOUND}")
 
 #include opencv
-set(OpenCV_DIR "C:/src/opencv/my_build/install")
+set(OpenCV_DIR "C:/src/opencv/my_build/install")  # dir that contains OpenCVConfig.cmake
 find_package(OpenCV REQUIRED)
 message(STATUS "OpenCV FOUND: ${OpenCV_FOUND}")
 set(OpenCV_LIBS opencv_core opencv_imgproc opencv_highgui opencv_imgcodecs opencv_dnn)
 message(STATUS "OpenCV_INCLUDE_DIRS: ${OpenCV_INCLUDE_DIRS}")
 
-# include g20
-set(g2o_DIR "C:/src/g2o/lib/cmake/g2o")  # folder with g2oConfig.cmake and g2oTargets.cmake
-set(G2O_INCLUDE_DIR "C:/src/g2o/include") # header files (in subdirectories)
-set(G2O_ROOT "C:/src/g2o")
-set(EIGEN3_ROOT "C:/src/eigen")
-set(EIGEN3_ROOT_DIR "C:/src/eigen")
-#C:/src/g2o/build/CMakeFiles/Export/6f82a6cf743d92c14565b42826281b56/g2oTargets.cmake
-MESSAGE(STATUS "CMAKE_CURRENT_LIST_DIR = ${CMAKE_CURRENT_LIST_DIR}")
-#find_package(g2o CONFIG REQUIRED)
-message(STATUS "G2O FOUND: ${G2O_FOUND}")
-message(STATUS "G2O FOUND stuff: ${G2O_STUFF_LIBRARY}")
-message(STATUS "G2O FOUND core: ${G2O_CORE_LIBRARY}")
-message(STATUS "G2O INCLUDE_DIR: ${G2O_INCLUDE_DIR}")
-message(STATUS "G2O_SOLVERS_FOUND=${G2O_SOLVERS_FOUND}")
-set(g2o_LIBS "C:/src/g2o/bin/g2o.exe")  # g2oTarges.cmake.line22
+# include g2o
+set(g2o_DIR "C:/src/g2o/lib/cmake/g2o")  # folder with config files
+set(g2o_INCLUDE_DIR "C:/src/g2o/include/g2o/core" "C:/src/g2o/include/g2o/solvers" "C:/src/g2o/include/g2o/stuff" "C:/src/g2o/include/g2o/types") # header files (in subdirectories)
+# all .dll.a files in g2o/lib: libg2o_cli.dll.a libg2o_core.dll.a libg2o_ext_freeglut_minimal.dll.a libg2o_hierarchical.dll.a libg2o_interface.dll.a libg2o_opengl_helper.dll.a libg2o_parser.dll.a libg2o_simulator.dll.a libg2o_solver_dense.dll.a libg2o_solver_eigen.dll.a libg2o_solver_pcg.dll.a libg2o_solver_slam2d_linear.dll.a libg2o_solver_structure_only.dll.a libg2o_stuff.dll.a libg2o_types_data.dll.a libg2o_types_icp.dll.a libg2o_types_sba.dll.a libg2o_types_sclam2d.dll.a libg2o_types_sim3.dll.a libg2o_types_slam2d.dll.a libg2o_types_slam2d_addons.dll.a libg2o_types_slam3d.dll.a libg2o_types_slam3d_addons.dll.a
 #set(g2o_LIBS C:/src/g2o/lib/libg2o_core.dll.a C:/src/g2o/lib/libg2o_stuff.dll.a C:/src/g2o/lib/libg2o_csparse_extension.dll.a C:/src/g2o/lib/libg2o_types_slam2d.dll.a)
-message(STATUS "G2O include dir: ${G2O_INCLUDE_DIR} ${G2O_INCLUDE_DIRS}")
-if(G2O_FOUND)
-    MESSAGE(STATUS "Found g2o")
-    set(G2O_BUILD_DIR ${G2O_INCLUDE_DIR}/build)
-    set(G2O_ALL_LIBS ${G2O_TYPES_SLAM2D} ${G2O_TYPES_SLAM3D} ${G2O_CORE_LIBRARY} ${G2O_STUFF_LIBRARY})
-    add_subdirectory(src)
-endif()
+#set(g2o_LIBS libg2o_cli.dll.a libg2o_core.dll.a libg2o_ext_freeglut_minimal.dll.a libg2o_hierarchical.dll.a libg2o_interface.dll.a libg2o_opengl_helper.dll.a libg2o_parser.dll.a libg2o_simulator.dll.a libg2o_solver_dense.dll.a libg2o_solver_eigen.dll.a libg2o_solver_pcg.dll.a libg2o_solver_slam2d_linear.dll.a libg2o_solver_structure_only.dll.a libg2o_stuff.dll.a libg2o_types_data.dll.a libg2o_types_icp.dll.a libg2o_types_sba.dll.a libg2o_types_sclam2d.dll.a libg2o_types_sim3.dll.a libg2o_types_slam2d.dll.a libg2o_types_slam2d_addons.dll.a libg2o_types_slam3d.dll.a libg2o_types_slam3d_addons.dll.a)
+set(g2o_LIBS g2o::core g2o::stuff g2o::types_slam2d)
+find_package(g2o REQUIRED)
+message(STATUS "G2O FOUND = ${g2o_FOUND}")
+MESSAGE(STATUS "CMAKE_CURRENT_LIST_DIR = ${CMAKE_CURRENT_LIST_DIR}")
+message(STATUS "CMAKE_BUILD_TYPE = ${CMAKE_BUILD_TYPE}")
+message(STATUS "g2o_INCLUDE_DIR = ${g2o_INCLUDE_DIR}")
+message(STATUS "G2O FOUND stuff = ${g2o_STUFF_LIBRARY}")
+message(STATUS "G2O FOUND core = ${g2o_CORE_LIBRARY}")
+message(STATUS "G2O_SOLVERS_FOUND = ${g2o_SOLVERS_FOUND}")
+message(STATUS "G2O INCLUDE_DIR = ${g2o_INCLUDE_DIR}")
 
-include_directories(${EIGEN3_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS} ${G2O_INCLUDE_DIR} C:/src/g2o/bin)  #
 
-add_executable(state_estimator src/main.cpp src/velocity_estimator.cpp src/VisualPipeline.cpp src/VisualPipeline.h src/StateEstimator.cpp src/StateEstimator.h src/SLAMg2o.cpp src/SLAMg2o.h)
-message(STATUS "OpenCV_LIBS = ${OpenCV_LIBS}, g2o_LIBS=${g2o_LIBS}")
-target_link_libraries(state_estimator ${OpenCV_LIBS} ${g2o_LIBS})  #
+# fin
+include_directories(${EIGEN3_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS} ${g2o_INCLUDE_DIR})
+
+add_executable(state_estimator src/main.cpp src/velocity_estimator.cpp src/VisualPipeline.cpp src/VisualPipeline.h src/StateEstimator.cpp src/StateEstimator.h src/SLAMg2o.cpp src/SLAMg2o.h src/util.h src/util.cpp src/custom_g2otypes.cpp src/custom_g2otypes.h)
+message(STATUS "OpenCV_LIBS = ${OpenCV_LIBS}")
+message(STATUS "g2o_LIBS = ${g2o_LIBS}")
+target_link_libraries(state_estimator ${OpenCV_LIBS} ${g2o_LIBS})
 #https://stackoverflow.com/questions/35984678/use-opencv-with-clion-ide-on-windows
