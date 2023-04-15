@@ -63,6 +63,17 @@ std::vector<std::vector<double>> read_csv(std::istream& str)
 
 int main() {
     printf("__cplusplus = %ld\n", __cplusplus);//__cplusplus = 201402
+    /*g2o::SE2 pose = g2o::SE2(3, 4, pi);
+    Eigen::Vector2d mes;
+    mes << 2, 0;
+    Eigen::Vector2d pos;
+    pos << 5, 4;
+    Eigen::Vector2d res = pose*pos;
+    printf("res = (%f, %f)\n", res[0], res[1]);
+    Eigen::Vector2d delta = res-mes;
+    printf("delta = (%f, %f)\n", delta[0], delta[1]);
+    return 0;
+     */
     //std::get<i>(tupel) == i-th element of tupel
 
     std::ifstream file("C:/Users/Idefix/PycharmProjects/tmpProject/merged_rundata_csv/alldata_2022_12_17-14_43_59_id3.csv");
@@ -133,8 +144,8 @@ int main() {
             if(old_heading != 0 && current_heading != 0){  // only compute yawrate if both heading values are valid.
                 yawrate = to_range(current_heading-old_heading)/(current_heading_time-old_heading_time);
             }
-            printf("do visual pipeline at t=%f, camL3_frnr=%i\n  speed=%f, yawrate=%f-%f=%f, number_of_detections = %zu\n", t, camL3_frnr, current_speed, current_heading, old_heading, yawrate, vp_det.size());
-            slam->add_vpdetections(current_speed, yawrate, vp_det);//current_heading-old_heading
+            //printf("do visual pipeline at t=%f, camL3_frnr=%i\n  speed=%f, yawrate=%f-%f=%f, number_of_detections = %zu\n", t, camL3_frnr, current_speed, current_heading, old_heading, yawrate, vp_det.size());
+            slam->add_vpdetections(t, camL3_frnr, vp_det);//current_heading-old_heading
         }
         // new gnss measurement := lat != 0 && lat != old_lat
         if(sensordata[12] != 0 && sensordata[12] != current_lat && camL3_frnr > 1280 && camL3_frnr < 2611){
@@ -143,12 +154,19 @@ int main() {
                 gps_base = {sensordata[12]*pi/180, current_lng*pi/180};
                 printf("set gps_base to (%f, %f)\n", std::get<0>(gps_base), std::get<1>(gps_base));
             }
-            if(camL3_frnr > 1700){  // gps-measurements bofore this are more wrong than right
+            if(camL3_frnr > 1281){  // gps-measurements bofore camL3_frnr 1700 are more wrong than right
                 std::tuple<meter, meter> mpos = gps_to_meter(sensordata[12]*pi/180, current_lng*pi/180, std::get<0>(gps_base), std::get<1>(gps_base));
                 //printf("add gnss constraint at t=%f, camL3_frnr=%i,gnsspos=(%f, %f), mpos=(%f, %f), v=%f, yaw=%f\n", t, camL3_frnr, sensordata[12]*pi/180, current_lng*pi/180, std::get<0>(mpos), std::get<1>(mpos), current_speed, current_heading);
-                pose_ext gps = {std::get<0>(mpos), std::get<1>(mpos), current_speed, current_heading, 0};//lat, long, speed, heading, yawrate
-                slam->add_GNSS_mes(gps);
-                slam->optimise();
+                if(old_heading != 0){
+                    pose_ext gps = {std::get<0>(mpos), std::get<1>(mpos), current_speed, current_heading, to_range(current_heading-old_heading)/(current_heading_time-old_heading_time)};//lat, long, speed, heading, yawrate
+                    slam->add_GNSS_mes(gps, camL3_frnr);
+                }else{
+                    slam->add_GNSSpos_mes(mpos, camL3_frnr);
+                }
+                if(camL3_frnr > 1700){
+                    slam->optimise();
+                }
+
             }
             //slam->optimise();  // buildSystem(): NaN within Jacobian for edge 0x1127aea0 for vertex 0, and chi=nan in final optimise
             current_lat = sensordata[12];

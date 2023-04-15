@@ -48,7 +48,7 @@ message(STATUS "G2O INCLUDE_DIR = ${g2o_INCLUDE_DIR}")
 # fin
 include_directories(${EIGEN3_INCLUDE_DIR} ${OpenCV_INCLUDE_DIRS} ${g2o_INCLUDE_DIR})
 
-add_executable(state_estimator src/main.cpp src/velocity_estimator.cpp src/VisualPipeline.cpp src/VisualPipeline.h src/StateEstimator.cpp src/StateEstimator.h src/SLAMg2o.cpp src/SLAMg2o.h src/util.h src/util.cpp src/custom_g2otypes.cpp src/custom_g2otypes.h)
+add_executable(state_estimator src/main.cpp src/velocity_estimator.cpp src/VisualPipeline.cpp src/VisualPipeline.h src/StateEstimator.cpp src/StateEstimator.h src/SLAMg2o.cpp src/SLAMg2o.h src/util.h src/util.cpp src/custom_g2otypes.cpp src/custom_g2otypes.h src/types.h)
 message(STATUS "OpenCV_LIBS = ${OpenCV_LIBS}")
 message(STATUS "g2o_LIBS = ${g2o_LIBS}")
 target_link_libraries(state_estimator ${OpenCV_LIBS} ${g2o_LIBS})

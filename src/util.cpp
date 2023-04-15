@@ -256,3 +256,20 @@ std::tuple<meter, meter> gps_to_meter(double lat, double lng, double lat_base, d
     //convert dist, azimuth1 to meter position
     return {cos(azimuth1)*dist, sin(azimuth1)*dist};
 }
+
+radiants angle_dist(radiants a, radiants b){
+    return pi - fabs(fmod(fabs(a - b), 2*pi) - pi);
+}
+
+m_position distazimuth_to_meter(meter dist, radiants heading){
+    m_position res;
+    res << cos(heading)*dist, sin(heading)*dist;
+    return res;
+}
+distheading meter_pose_to_distazimuth(const m_position& pos0, meter pos1_north, meter pos1_east){
+    //p1+distazimuth_to_meter(meter_pose_to_distazimuth(p0, p1))
+    double mv0 = pos0(0)-pos1_north;
+    double mv1 = pos0(1)-pos1_east;
+    distheading res {sqrt(mv0*mv0+mv1*mv1), atan2(mv1, mv0)};
+    return res;
+}

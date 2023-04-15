@@ -41,4 +41,7 @@ std::vector<std::tuple<int, pose_ext>> get_car_poses(std::string filename);
 int ssdt2camL(double ssdt);
 std::tuple<meter, meter> gps_to_meter(radiants lat, radiants lng, radiants lat_base, radiants lng_base);
 radiants to_range(radiants a);
+radiants angle_dist(radiants a, radiants b);
+m_position distazimuth_to_meter(meter dist, radiants heading);
+distheading meter_pose_to_distazimuth(const m_position& pos0, meter pos1_north, meter pos1_east);
 #endif //STATE_ESTIMATOR_UTIL_H
