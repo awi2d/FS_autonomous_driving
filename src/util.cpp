@@ -13,6 +13,40 @@ int str2int(const std::string& s){
     int tmp = std::stoi(s);
     return tmp;
 }
+Color int2color(int color){
+    if(color == 0){
+        return Color::blue;
+    }
+    if(color == 1){
+        return Color::yellow;
+    }
+    if(color == 2){
+        return Color::orange_bs;
+    }
+    if(color == 3){
+        return Color::orange_ys;
+    }
+    printf("ERROR: invalid color: %i", color);
+    //undefined behavior: returns probably invalid value?
+    return static_cast<Color>(-1);
+}
+int color2int(Color color){
+    if(color == Color::blue){
+        return 0;
+    }
+    if(color == Color::yellow){
+        return 1;
+    }
+    if(color == Color::orange_bs){
+        return 2;
+    }
+    if(color == Color::orange_ys){
+        return 3;
+    }
+    printf("TODO add new color to util methods str2color and color2int");
+    return -1;
+}
+
 std::vector<std::string> split(const std::string& str, char delemiter){
     std::vector<std::string> res;
     std::stringstream stst(str);
@@ -44,7 +78,7 @@ bool file_exists(const std::string& name) {
 std::vector<boundingbox> get_boundingbox(const std::string& cam, unsigned int framenr){
     // should have the same behavior as
     // def get_boundingboxes(cam: str, framenr: int) -> [cone_bounding_box]:
-    std::string filename = "C:/Users/Idefix/PycharmProjects/tmpProject/vp_labels/"+cam+"_bb/"+cam+"_frame_"+std::to_string(framenr)+".txt";
+    std::string filename = "C:/Users/Idefix/PycharmProjects/eTeam_pyutil/vp_labels/"+cam+"_bb/"+cam+"_frame_"+std::to_string(framenr)+".txt";
     std::vector<boundingbox> result;
     if(file_exists(filename)){
         std::ifstream file(filename);
@@ -54,19 +88,17 @@ std::vector<boundingbox> get_boundingbox(const std::string& cam, unsigned int fr
         while(std::getline(file,line)){
             // line = "0 0.5234 0.54241 0.12345 0.12345"
             std::vector<std::string> line_split = split(line, ' ');
-            boundingbox res {str2int(line_split[0]), str2double(line_split[1]), str2double(line_split[2]), str2double(line_split[3]), str2double(line_split[4])};
+            boundingbox res {int2color(str2int(line_split[0])), str2double(line_split[1]), str2double(line_split[2]), str2double(line_split[3]), str2double(line_split[4])};
             result.push_back(res);
         }
     }
     return result;  // empty if file doesnt exist
 }
 std::map<std::tuple<int, int>, std::vector<pxpos>> keypoints_cache;
-std::vector<pxpos> get_cone_keypoints(const std::string& cam, int framenr, int cone){
+std::vector<pxpos> get_cone_keypoints(const std::string& cam, type_frnr framenr, unsigned int cone){
     //printf("get_cone_keypoints(cam=%s, frnr=%i, cone=%i)", cam.c_str(), framenr, cone);
-    // should have the same behavior as
-    // def get_cone_keypoints(cam, framenr, cone) -> [(normalised_px_w, normalised_px_h)]:
     if(keypoints_cache.empty()){
-        std::string filename = "C:/Users/Idefix/PycharmProjects/tmpProject/vp_labels/cone_annotations.csv";  // hardcoeded filenames in the sourcecode are a good idea, right?
+        std::string filename = "C:/Users/Idefix/PycharmProjects/eTeam_pyutil/vp_labels/cone_annotations.csv";  // hardcoeded filenames in the sourcecode are a good idea, right?
         if(file_exists(filename)){
             std::ifstream file(filename);
             std::string line;
@@ -94,71 +126,41 @@ std::vector<pxpos> get_cone_keypoints(const std::string& cam, int framenr, int c
     return keypoints_cache[key];  // empty if file doesnt exist
 }
 
+const double obj_Distm[7][7] = {
+        {0.00000000000000000, 0.09931057723962547, 0.18581319480106973, 0.2893731266180254, 0.09931057723962547, 0.18581319480106973, 0.2893731266180254},
+        {0.09931057723962547, 0.00000000000000000, 0.08783333333333333, 0.18816666666666668, 0.058826410187308546, 0.126375, 0.20548663807186746},
+        {0.18581319480106973, 0.08783333333333333, 0.00000000000000000, 0.1, 0.126375, 0.08119296009798978, 0.156},
+        {0.28937312661802540, 0.18816666666666668, 0.1, 0.00000000000000000, 0.20548663807186746, 0.156, 0.1159014116265954},
+        {0.09931057723962547, 0.05882641018730854, 0.126375, 0.20548663807186746, 0.00000000000000000, 0.08783333333333333, 0.18816666666666668},
+        {0.18581319480106973, 0.12637500000000000, 0.08119296009798978, 0.156, 0.08783333333333333, 0.00000000000000000, 0.1},
+        {0.28937312661802540, 0.20548663807186746, 0.156, 0.1159014116265954, 0.18816666666666668, 0.1, 0.00000000000000000}
+};  // distances between keypoints on physical cone in m. Cone dimensions are defined in the rules, so this is constant between all runs, until rules change.
+
 distheading customPnP(const cone_keypoints& keypoints, boundingbox bb){
-    int cls; double posw, posh, bb_sizew, bb_sizeh;
+    Color cls;
+    double posw, posh, bb_sizew, bb_sizeh;
     std::tie(cls, posw, posh, bb_sizew, bb_sizeh) = bb;
     int imgsize_h = 1200; int imgsize_w = 1920;
-    double obj_Distm[7][7] = {
-            {0.00000000000000000, 0.09931057723962547, 0.18581319480106973, 0.2893731266180254, 0.09931057723962547, 0.18581319480106973, 0.2893731266180254},
-            {0.09931057723962547, 0.00000000000000000, 0.08783333333333333, 0.18816666666666668, 0.058826410187308546, 0.126375, 0.20548663807186746},
-            {0.18581319480106973, 0.08783333333333333, 0.00000000000000000, 0.1, 0.126375, 0.08119296009798978, 0.156},
-            {0.28937312661802540, 0.18816666666666668, 0.1, 0.00000000000000000, 0.20548663807186746, 0.156, 0.1159014116265954},
-            {0.09931057723962547, 0.05882641018730854, 0.126375, 0.20548663807186746, 0.00000000000000000, 0.08783333333333333, 0.18816666666666668},
-            {0.18581319480106973, 0.12637500000000000, 0.08119296009798978, 0.156, 0.08783333333333333, 0.00000000000000000, 0.1},
-            {0.28937312661802540, 0.20548663807186746, 0.156, 0.1159014116265954, 0.18816666666666668, 0.1, 0.00000000000000000}
-    };  // distances between keypoints on physical cone in m.
-    double tmp[21];
+    double tmp[21];  // type(tmp) = meter/pixel
     int tmpi=0;
     for(int i=0; i<6; i++){
         for(int j=i+1; j<7; j++){
             double pxdist = std::sqrt(std::pow((std::get<0>(keypoints[i])*imgsize_w*bb_sizew-std::get<0>(keypoints[j])*imgsize_w*bb_sizew), 2)
                                       + std::pow((std::get<1>(keypoints[i])*imgsize_h*bb_sizeh-std::get<1>(keypoints[j])*imgsize_h*bb_sizeh), 2));  // = dist between keypoints i and j in pixel space
-            double mpropx = obj_Distm[i][j]/pxdist;
-            tmp[tmpi] = mpropx;
+            tmp[tmpi] = obj_Distm[i][j]/pxdist;
             tmpi++;
         }
     }
     std::sort(std::begin(tmp), std::end(tmp));
-    double dist = -1.97349351e-01 + 1.82927777e+03*tmp[10];
+    meter dist = -1.97349351e-01 + 1.82927777e+03*tmp[10];
     double avg_widthpos = 0;
     for(int i=0; i<7; i++){
         avg_widthpos += std::get<0>(keypoints[i])/7;
     }
     avg_widthpos = posw-0.5*bb_sizew+bb_sizew*avg_widthpos;
-    double heading = -0.90914045 + 1.07626391*avg_widthpos;
+    radiants heading = -0.90914045 + 1.07626391*avg_widthpos;
     distheading res {dist, heading};
     return res;
-}
-
-pose_ext get_at_time(std::vector<std::tuple<droneFrnr, pose_ext>> data, double time){
-    if(time <= std::get<0>(data[0])){
-        printf("warning: time %f is before time range of data (%i, %i)\n", time, std::get<0>(data[0]), std::get<0>(data[data.size()-1]));
-        return std::get<1>(data[0]);
-    }
-    if(time >= std::get<0>(data[data.size()-1])){
-        printf("warning: time %f is after time range of data (%i, %i)\n", time, std::get<0>(data[0]), std::get<0>(data[data.size()-1]));
-        return std::get<1>(data[data.size()-1]);
-    }
-    for(unsigned int i=1; i<data.size(); i++){
-        if(std::get<0>(data[i]) > time){
-            if(time == std::get<0>(data[i-1])){
-                return std::get<1>(data[i-1]);
-            }
-            double w0 = abs(time-std::get<0>(data[i-1]));
-            double w1 = abs(std::get<0>(data[i])-time);
-            double sum = w0+w1;
-            w0 = w0/sum;
-            w1 = w1/sum;
-            pose_ext v0 = std::get<1>(data[i]);
-            pose_ext v1 = std::get<1>(data[i-1]);
-            //(w1*y[i-1]+w0*y[i])/sum
-            pose_ext res = {(std::get<0>(v0)*w0+std::get<0>(v1)*w1), (std::get<1>(v0)*w0+std::get<1>(v1)*w1), (std::get<2>(v0)*w0+std::get<2>(v1)*w1), (std::get<3>(v0)*w0+std::get<3>(v1)*w1), (std::get<4>(v0)*w0+std::get<4>(v1)*w1)};
-            return res;
-
-        }
-    }
-    printf("ERROR: unreachable code in get_at_time(data[0].time=%i, data[-1].time=%i, time=%f)", std::get<0>(data[0]), std::get<0>(data[data.size()-1]), time);
-    return std::get<1>(data[0]);
 }
 
 std::vector<std::tuple<int, pose_ext>> get_car_poses(std::string filename){
@@ -190,6 +192,7 @@ int ssdt2camL(double ssdt){
 }
 
 
+//gpsutil:
 double sqr(double x){
     return x*x;
 }
@@ -272,4 +275,14 @@ distheading meter_pose_to_distazimuth(const m_position& pos0, meter pos1_north, 
     double mv1 = pos0(1)-pos1_east;
     distheading res {sqrt(mv0*mv0+mv1*mv1), atan2(mv1, mv0)};
     return res;
+}
+
+radiants to_range(radiants a){
+    while (a > pi){
+        a -= 2*pi;
+    }
+    while (a < -pi){
+        a += 2*pi;
+    }
+    return a;
 }

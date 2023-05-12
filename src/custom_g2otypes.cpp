@@ -1,4 +1,5 @@
 #include "custom_g2otypes.h"
+#include "util.h"
 
 namespace custom_g2otypes {
 
@@ -25,19 +26,21 @@ namespace custom_g2otypes {
     }
 //Vertex_conepos
     Vertex_conepos::Vertex_conepos(){
-        this->color = 0;
+        this->color = Color::blue;
         this->negativeInformation = 0;
     }
-    Vertex_conepos::Vertex_conepos(int color){
+    Vertex_conepos::Vertex_conepos(Color color){
         this->color = color;
         this->negativeInformation = 0;
     }
     bool Vertex_conepos::read(std::istream& is) {
-        is >> _estimate[0] >> _estimate[1] >> this->color >> this->negativeInformation;
+        int tmp;
+        is >> _estimate[0] >> _estimate[1] >> tmp >> this->negativeInformation;
+        this->color = int2color(tmp);
         return true;
     }
     bool Vertex_conepos::write(std::ostream& os) const {
-        os << this->_estimate[0] << " " << this->_estimate[1] << " " << this->color << " " << this->negativeInformation;
+        os << this->_estimate[0] << " " << this->_estimate[1] << " " << color2int(this->color) << " " << this->negativeInformation;
         return os.good();
     }
 //Edge_odometry

@@ -76,7 +76,7 @@ int main() {
      */
     //std::get<i>(tupel) == i-th element of tupel
 
-    std::ifstream file("C:/Users/Idefix/PycharmProjects/tmpProject/merged_rundata_csv/alldata_2022_12_17-14_43_59_id3.csv");
+    std::ifstream file("C:/Users/Idefix/PycharmProjects/eTeam_pyutil/merged_rundata_csv/alldata_2022_12_17-14_43_59_id3.csv");
     std::vector<std::vector<double>> csv_content = read_csv(file);
 
     printf("csv_content.size() = %zu\n", csv_content.size());
@@ -88,10 +88,10 @@ int main() {
     //StateEstimator* state_estimator = new StateEstimator(false, true, true, true, true, false);
 
     std::string conedet_path = "C:/Users/Idefix/PycharmProjects/datasets/Flos_objectdetection/2022_04_08_best.onnx";
-    std::string keypointdet_path = "C:/Users/Idefix/PycharmProjects/tmpProject/keypoint_regression_best.onnx";
+    std::string keypointdet_path = "C:/Users/Idefix/PycharmProjects/eTeam_pyutil/keypoint_regression_best.onnx";
 
     VisualPipeline* visual_pipeline = new VisualPipeline(conedet_path, keypointdet_path);
-    SLAM* slam = new SLAM(true, false, false);
+    SLAM* slam = new SLAM(true, true, false);
     slam->print();
 
     int old_camL3_frnr = 1280;
@@ -139,12 +139,12 @@ int main() {
         //visual pipeline and SLAM
         if(camL3_frnr != old_camL3_frnr && camL3_frnr > 1280 && camL3_frnr < 2611){ // new camera image -> do visual pipeline and slam
             old_camL3_frnr = camL3_frnr;
-            std::vector<std::tuple<int, distheading>> vp_det = VisualPipeline::sim_get_relative_cone_positions(camL3_frnr, 0);
+            std::vector<std::tuple<Color, distheading>> vp_det = VisualPipeline::sim_get_relative_cone_positions(camL3_frnr, 0);
             double yawrate = 0;
             if(old_heading != 0 && current_heading != 0){  // only compute yawrate if both heading values are valid.
                 yawrate = to_range(current_heading-old_heading)/(current_heading_time-old_heading_time);
             }
-            //printf("do visual pipeline at t=%f, camL3_frnr=%i\n  speed=%f, yawrate=%f-%f=%f, number_of_detections = %zu\n", t, camL3_frnr, current_speed, current_heading, old_heading, yawrate, vp_det.size());
+            printf("do visual pipeline at t=%f, camL3_frnr=%i\n  speed=%f, yawrate=%f-%f=%f, number_of_detections = %zu\n", t, camL3_frnr, current_speed, current_heading, old_heading, yawrate, vp_det.size());
             slam->add_vpdetections(t, camL3_frnr, vp_det);//current_heading-old_heading
         }
         // new gnss measurement := lat != 0 && lat != old_lat
@@ -156,30 +156,25 @@ int main() {
             }
             if(camL3_frnr > 1281){  // gps-measurements bofore camL3_frnr 1700 are more wrong than right
                 std::tuple<meter, meter> mpos = gps_to_meter(sensordata[12]*pi/180, current_lng*pi/180, std::get<0>(gps_base), std::get<1>(gps_base));
-                //printf("add gnss constraint at t=%f, camL3_frnr=%i,gnsspos=(%f, %f), mpos=(%f, %f), v=%f, yaw=%f\n", t, camL3_frnr, sensordata[12]*pi/180, current_lng*pi/180, std::get<0>(mpos), std::get<1>(mpos), current_speed, current_heading);
+                printf("add gnss constraint at t=%f, camL3_frnr=%i,gnsspos=(%f, %f), mpos=(%f, %f), v=%f, yaw=%f\n", t, camL3_frnr, sensordata[12]*pi/180, current_lng*pi/180, std::get<0>(mpos), std::get<1>(mpos), current_speed, current_heading);
                 if(old_heading != 0){
                     pose_ext gps = {std::get<0>(mpos), std::get<1>(mpos), current_speed, current_heading, to_range(current_heading-old_heading)/(current_heading_time-old_heading_time)};//lat, long, speed, heading, yawrate
                     slam->add_GNSS_mes(gps, camL3_frnr);
+                    slam->optimise();
                 }else{
                     slam->add_GNSSpos_mes(mpos, camL3_frnr);
                 }
-                if(camL3_frnr > 1700){
-                    slam->optimise();
-                }
-
             }
-            //slam->optimise();  // buildSystem(): NaN within Jacobian for edge 0x1127aea0 for vertex 0, and chi=nan in final optimise
             current_lat = sensordata[12];
         }
 
         //controller
-        //controls = controler.get(car_state, map);
+        //controls = controler.get(car_state, slam->get_map());
 
         //send controls to other programm parts/can?
     }
     printf("\nfinished iterating over sensordata\n");
     slam->print();
-    //slam->do_clustering = true;
     slam->save_graph("before");
     slam->full_optimise();
     slam->print();

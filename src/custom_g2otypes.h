@@ -8,6 +8,7 @@
 #include "g2o/core/base_binary_edge.h"
 #include "g2o/types/slam2d/se2.h"
 #include "g2o/types/slam2d/vertex_point_xy.h"
+#include "cppTypes.h"
 
 typedef std::tuple<g2o::SE2, g2o::SE2> type_carpose;
 namespace custom_g2otypes {
@@ -44,10 +45,10 @@ class Vertex_carpose : public g2o::BaseVertex<6, type_carpose> {
     class Vertex_conepos : public g2o::BaseVertex<2, Eigen::Vector2d> {
     public:
     EIGEN_MAKE_ALIGNED_OPERATOR_NEW;
-    int color;
+    Color color;
     double negativeInformation;
     Vertex_conepos();
-    Vertex_conepos(int color);
+    Vertex_conepos(Color color);
 
     virtual void setToOriginImpl() { _estimate.setZero(); }
 

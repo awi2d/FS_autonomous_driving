@@ -1,26 +1,25 @@
 #include <Eigen/Dense>
 #include <opencv2/core.hpp>
-#include <opencv2/core.hpp>
 #include <opencv2/imgproc.hpp>
 #include <opencv2/opencv.hpp>
 #include <opencv2/dnn.hpp>
-#include <opencv2/highgui.hpp>
 #include <opencv2/imgcodecs.hpp>
-#include <opencv2/stitching.hpp>
 #include <utility>
 
 #include "util.h"
+#include "cppTypes.h"
 #include "VisualPipeline.h"
 
 VisualPipeline::VisualPipeline(const std::string& conedetection_model_path, const std::string& keypoint_model_path){
+    // read neural nets from files
     //printf("VP: readNetFromONNX(%s)\n", conedetection_model_path.c_str());
     //this->cone_detection = cv::dnn::readNetFromONNX(conedetection_model_path);
     //printf("VP: readNetFromONNX(%s)\n", keypoint_model_path.c_str());
     //this->keypoint_detection = cv::dnn::readNetFromONNX(keypoint_model_path);
 }
 
-std::map<type_frnr, std::tuple<distheading, distheading>> orangecone_cache;
-    std::tuple<distheading, distheading> get_orangecone_distheading(type_frnr frnr, std::string base_path="C:/Users/Idefix/PycharmProjects/tmpProject/vp_labels/"){
+std::map<type_frnr, std::tuple<distheading, distheading>> orangecone_cache;  // distheading to blueside and yellowside orange cone, respectively
+    std::tuple<distheading, distheading> get_orangecone_distheading(type_frnr frnr, std::string base_path="C:/Users/Idefix/PycharmProjects/eTeam_pyutil/vp_labels/"){
     if(orangecone_cache.empty()){
         std::string filename = std::move(base_path);
         filename.append("camL3_orangedistheading_l_r.txt");
@@ -45,35 +44,37 @@ std::map<type_frnr, std::tuple<distheading, distheading>> orangecone_cache;
         return it->second;
     }
     printf("ERROR: key %i not in orangecone_cache.\n", frnr);
-    std::tuple<distheading, distheading> res = {{0, 0}, {0, 0}};  // TODO this is a bad way to represent empty
+    std::tuple<distheading, distheading> res = {{-1, -1}, {-1, -1}};  // TODO this is a bad way to represent empty
     return res;
 }
 
-    std::vector<std::tuple<int, distheading>> VisualPipeline::sim_get_relative_cone_positions(unsigned int camL3_frnr, unsigned int camR3_frnr) {
-        std::vector<std::tuple<int, distheading>> vp_det;
+
+    std::vector<std::tuple<Color, distheading>> VisualPipeline::sim_get_relative_cone_positions(type_frnr camL3_frnr, type_frnr camR3_frnr) {
+        // simulate what the correct implementation of the visual pipeline should do, but use handmade annotations instead of neural networks to get bounding boxes and keypoints.
+        std::vector<std::tuple<Color, distheading>> vp_det;
         std::vector<boundingbox> bbs = get_boundingbox("camL3", camL3_frnr);
         //printf("number of bounding boxes of camL3_frnr=%u = %zu\n", camL3_frnr, bbs.size());
         bool orange_cones_not_added = true;
         for (unsigned int bbi = 0; bbi < bbs.size(); bbi++) {
             //printf("bbs[%i] = (%i, %f, %f, %f, %f)\n", bbi, std::get<0>(bbs[bbi]), std::get<1>(bbs[bbi]), std::get<2>(bbs[bbi]), std::get<3>(bbs[bbi]), std::get<4>(bbs[bbi]));
-            if (std::get<0>(bbs[bbi]) == 0 || std::get<0>(bbs[bbi]) == 1) {  // color is blue or yellow (not orange)
+            if (std::get<0>(bbs[bbi]) == Color::blue || std::get<0>(bbs[bbi]) == Color::yellow) {  // color is blue or yellow (not orange)
                 cone_keypoints kp = get_cone_keypoints("camL3", camL3_frnr, bbi);
-                if (kp.size() == 7) {
-                    distheading tmp = customPnP(kp, bbs[bbi]);
+                if (kp.size() == 7) {  // all cones have 7 keypoints or None, if they were not visible.
+                    distheading relative_cone_position = customPnP(kp, bbs[bbi]);
                     //printf("distheading(bbi=%u) = (%f, %f)\n", bbi, std::get<0>(tmp), std::get<1>(tmp));
-                    if (std::get<0>(tmp) < 10) {//ignore cone detections 10 or more meter away
-                        vp_det.emplace_back(std::get<0>(bbs[bbi]), tmp);
+                    if (std::get<0>(relative_cone_position) < 10) {//ignore cone detections 10 or more meter away
+                        vp_det.emplace_back(std::get<0>(bbs[bbi]), relative_cone_position);  // bounding box[0] = Color of that cone
                     }
                     //printf("vp_det[%i] = (%f, %f)\n", bbi, std::get<0>(vp_det), std::get<1>(vp_det));
                 }
             } else {
-                if (std::get<0>(bbs[bbi]) == 2 && orange_cones_not_added) {  // cone is orange (only execute once)
+                if (orange_cones_not_added) {  // only colors are blue, yellow and orange -> cone is orange (only execute once)
                     //for orange cone the keypoints doesnt work.
                     std::tuple<distheading, distheading> orange_det = get_orangecone_distheading(camL3_frnr);
-                    if (std::get<0>(std::get<0>(orange_det)) > 0) {  // 0 used as error-value
+                    if (std::get<0>(std::get<0>(orange_det)) > 0) {  // -1 used as error-value
                         orange_cones_not_added = false;
-                        vp_det.emplace_back(2, std::get<0>(orange_det));  // orange cone on the blue side has cls 2
-                        vp_det.emplace_back(3, std::get<1>(orange_det));  // orange cone on the yellow side has class 3.
+                        vp_det.emplace_back(Color::orange_bs, std::get<0>(orange_det));  // orange cone on the blue side
+                        vp_det.emplace_back(Color::orange_ys, std::get<1>(orange_det));  // orange cone on the yellow side
                     }
                 }
             }
@@ -104,7 +105,7 @@ std::map<type_frnr, std::tuple<distheading, distheading>> orangecone_cache;
             cv::divide(blob, std, blob);
         }
 
-        //blob.size = 1, 3, 1216, 7077993, 6029412
+        //blob.size = 1, 3, 1216, 7077993, 6029412  // maybe some of these sizes are random values from memory because c++ doest check for out-of-bounds array acceses?
         printf("blob.size = %i, %i, %i, %i, %i\n", blob.size[0], blob.size[1], blob.size[2], blob.size[4], blob.size[5]);
         this->cone_detection.setInput(blob);
         cv::Mat prob = this->cone_detection.forward();
@@ -128,12 +129,3 @@ std::map<type_frnr, std::tuple<distheading, distheading>> orangecone_cache;
         return err_out;
     }
 
-    radiants to_range(radiants a){
-        while (a > pi){
-            a -= 2*pi;
-        }
-        while (a < -pi){
-            a += 2*pi;
-        }
-        return a;
-    }
