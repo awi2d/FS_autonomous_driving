@@ -1,18 +1,56 @@
 # FS_autonomous
-should contain Files neccesary to autonous drive around an autocross-track, as described in Formula Student Germany. \
+should contain Files neccesary to autonous drive around an autocross-track, as described in Formula Student Germany. 
 ##### contains: 
-* velocity_estimator:
-  - input: all sensor data from the car.
-  - output: state of the car, including position and velocity (linear an angle)
 * image_detection:
   - input: images from the onboard-cameras.
   - output: position and color of all cones in that image, relative to the car.
 * SLAM:
   - input: state of the car and position of cones
   - output: map of the track and position of car in the map.
-* [optionaly] controller:
+* velocity_estimator (currently unused):
+  - input: all sensor data from the car.
+  - output: state of the car, including position and velocity (linear an angle)
+
+* [planed] controller:
   - input: state of the car, map and position of car in map.
   - output: gaol veloctiy and yawrate.
+
+## SLAM
+
+ 
+ 
+ The inputs are the cone detections from the visual Pipeline (distance and heading relative to car for all cones in an image) and GPS measurements (position, heading and speed of the car relative to earth). The GPS measurements are available at a lower frequency (1/s) as the camera images (20/s), so the pose of the car has to be estimated in between GPS measurements.
+ This programm uses g2o to find the path of the car and cone positions that best explain the measurements. G2o represents the problem as a graph, that is made up from custom Vertices (variables to be optimised) and Edges (constraints on these vertices):
+* Vertex_carpose, that contain 
+  - optimisable variables: pose (position_north [m], position_east [m], heading [radiants]) and odometry (vx [m/s], vy [m/s], yawrate [radiants/second]). [std::tuple<g2o::SE2, g2o::SE2>]
+  - non-optimisable variables: camL3_frnr, for debug displays
+* Vertex_conepos, that contains position 
+  - optimisable variables: (position_north [m], position_east [m]) [Eigen::Vector2d]
+  - non-optimisable variables: color [int]
+* Edge_odometry: constrain between two adjacend Vertex_carpose.
+  - measurment is time [seconds].
+  - constraints the pose to be consistent with the odometry.
+  - constraints the odometry to be consistent with the car model: vx, vy, yawrate = constant. (there might be a better carmodel, if the acceleration data from the IMU is used)
+* Edge_gnss: unary constraint on one Vertex_carpose.
+  - measurement is converted gnss measurement, same type as Vertex_carpose optimisable variables. (yawrate is estimated as current_heading-old_heading/dt)
+* Edge_visdet: constraint between vertex_carpose and Vertex_conepos.
+  - measurement is distance to cone (in direction of heading and perpendicular to that direction), so the output of the visual pipeline.
+
+ class SLAM:
+  add_visdet:
+   params:
+    vis_det: output of visual pipeline
+   description:
+    adds new carpose to graph, with edge_odometry to last carpose.
+    for each detection in vis_det: (if necessary: adds new conepos), adds edeg_visdet between current carpose and conepos.
+  add_gnss:
+   adds Edge_gnss to current carpose
+  optimise: 
+   optimises the graph, and writes the result to file.
+
+
+These custom types have the advantage over the tutorial_slam2d types of g2o that they incorporate an car model, instead of relying on the speed and yawrate to be measured for each frame. 
+
 
 ## velocity_estimator: 
 
@@ -48,35 +86,3 @@ should contain Files neccesary to autonous drive around an autocross-track, as d
    void mesurment_u(const Eigen::Vector2d& u_mes){
      u_mes = [Trq_Drive, wheelangel]
       assuming Trq_Drive is the Torque of the motors and wheelangle is the angle of the steering wheel. TODO add constant, so that wheelangle*constant = yawrate
-
-## SLAM
-
- uses g2o to optimize graph. 
- Graph is made up from custom Vertices (variables to be optimised) and Edges (constraints on these edges):
-* Vertex_carpose, that contain 
-  - optimisable variables: pose (position_north [m], position_east [m], heading [radiants]) and odometry (vx [m/s], vy [m/s], yawrate [radiants/second]). [std::tuple<g2o::SE2, g2o::SE2>]
-  - non-optimisable variables: camL3_frnr, for debug displays
-* Vertex_conepos, that contains position 
-  - optimisable variables: (position_north [m], position_east [m]) [Eigen::Vector2d]
-  - non-optimisable variables: color [int]
-* Edge_odometry: constrain between two adjacend Vertex_carpose.
-  - measurment is time [seconds].
-  - constraints the pose to be consistent with the odometry.
-  - constraints the odometry to be consistent with the car model: vx, vy, yawrate = constant. (there might be a better carmodel, if the acceleration data from the IMU is used)
-* Edge_gnss: unary constraint on one Vertex_carpose.
-  - measurement is converted gnss measurement, same type as Vertex_carpose optimisable variables. (yawrate is estimated as current_heading-old_heading/dt)
-* Edge_visdet: constraint between vertex_carpose and Vertex_conepos.
-  - measurement is distance to cone (in direction of heading and perpendicular to that direction), so the output of the visual pipeline.
-
- class SLAM:
-  add_visdet:
-   params:
-    vis_det: output of visual pipeline
-   description:
-    adds new carpose to graph, with edge_odometry to last carpose.
-    for each detection in vis_det: (if necessary: adds new conepos), adds edeg_visdet between current carpose and conepos.
-  add_gnss:
-   adds Edge_gnss to current carpose
-  optimise: 
-   optimises the graph, and writes the result to file.
-These custom types have the advantage over the tutorial_slam2d types of g2o that they incorporate an car model, instead of relying on the speed and yawrate to be measured for each frame.
